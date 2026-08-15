@@ -12,18 +12,24 @@ import SwiftUI
 
 enum FocusSound: String, CaseIterable, Identifiable, Defaults.Serializable {
     case brownNoise
+    case rain
+    case ocean
 
     var id: String { rawValue }
 
     var displayName: String {
         switch self {
         case .brownNoise: "Brown Noise"
+        case .rain: "Rain"
+        case .ocean: "Ocean"
         }
     }
 
     var resourceName: String {
         switch self {
         case .brownNoise: "brownnoise"
+        case .rain: "rain"
+        case .ocean: "ocean"
         }
     }
 }
@@ -82,6 +88,15 @@ final class FocusSoundManager: ObservableObject {
 
     func toggle() {
         isPlaying ? stop() : start()
+    }
+
+    /// Picks a sound (from the wave button's context menu); if one is already
+    /// playing, crossfades straight into the new choice.
+    func select(_ choice: FocusSound) {
+        Defaults[.lastFocusSound] = choice
+        if isPlaying {
+            start()
+        }
     }
 
     func start() {

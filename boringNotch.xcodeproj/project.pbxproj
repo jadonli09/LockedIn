@@ -91,6 +91,10 @@
 		AA100000000000000000000A /* BlocklistMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD0218F4842EEEAE35CA3F7 /* BlocklistMatcher.swift */; };
 		70AC9AF4937F0A111D320D0B /* BrowserBlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 743A98C4DFF40A212319A1FF /* BrowserBlocker.swift */; };
 		905CD8CED9E6D21B945EAA09 /* lockedin.html in Resources */ = {isa = PBXBuildFile; fileRef = F98AC469894D222CCA5F762B /* lockedin.html */; };
+		6E0740286189C190FB561DFB /* rain.wav in Resources */ = {isa = PBXBuildFile; fileRef = C53A2B129EFA029BF9AF4631 /* rain.wav */; };
+		BD9E885518E8E28629461705 /* ocean.wav in Resources */ = {isa = PBXBuildFile; fileRef = DC6E2E6A4D48275A66F5CD2F /* ocean.wav */; };
+		55C3FA531B877A743C66E551 /* PassCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B098F62F5B5BE528DDCB5E /* PassCenter.swift */; };
+		60AAEBB8EE647EBEC204B4A5 /* BlockControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A67EA24EBDC43712874CEB7 /* BlockControlView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -204,6 +208,10 @@
 		AA1000000000000000000001 /* LockedInTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LockedInTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		743A98C4DFF40A212319A1FF /* BrowserBlocker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserBlocker.swift; sourceTree = "<group>"; };
 		F98AC469894D222CCA5F762B /* lockedin.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = lockedin.html; sourceTree = "<group>"; };
+		C53A2B129EFA029BF9AF4631 /* rain.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = rain.wav; sourceTree = "<group>"; };
+		DC6E2E6A4D48275A66F5CD2F /* ocean.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = ocean.wav; sourceTree = "<group>"; };
+		E8B098F62F5B5BE528DDCB5E /* PassCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassCenter.swift; sourceTree = "<group>"; };
+		3A67EA24EBDC43712874CEB7 /* BlockControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockControlView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -367,6 +375,7 @@
 		1471639B2C5D362F0068B555 /* components */ = {
 			isa = PBXGroup;
 			children = (
+				3A67EA24EBDC43712874CEB7 /* BlockControlView.swift */,
 				D734608B5B2EDEF8C281313D /* BlockOverlayView.swift */,
 				C68C817527A1B90DD3BB844A /* FocusPanelView.swift */,
 				995E7AA8D1D610A9655003E7 /* MarqueeText.swift */,
@@ -390,6 +399,7 @@
 		147163B52C5D804B0068B555 /* managers */ = {
 			isa = PBXGroup;
 			children = (
+				E8B098F62F5B5BE528DDCB5E /* PassCenter.swift */,
 				743A98C4DFF40A212319A1FF /* BrowserBlocker.swift */,
 				9AB800F27C62ADDF53F7FF7E /* AppBlocker.swift */,
 				F4B37CC5444115B89130DF9B /* FocusSoundManager.swift */,
@@ -441,6 +451,8 @@
 		14CEF4142C5CAED300855D72 /* boringNotch */ = {
 			isa = PBXGroup;
 			children = (
+				DC6E2E6A4D48275A66F5CD2F /* ocean.wav */,
+				C53A2B129EFA029BF9AF4631 /* rain.wav */,
 				F98AC469894D222CCA5F762B /* lockedin.html */,
 				D1E26F329760655E7206F54D /* brownnoise.wav */,
 				85051445F4B470F9F6FA19AD /* chime.wav */,
@@ -756,6 +768,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BD9E885518E8E28629461705 /* ocean.wav in Resources */,
+				6E0740286189C190FB561DFB /* rain.wav in Resources */,
 				905CD8CED9E6D21B945EAA09 /* lockedin.html in Resources */,
 				BFCC2C401DD2BD18448FDA17 /* brownnoise.wav in Resources */,
 				3DB99A78736E4236282D99BF /* chime.wav in Resources */,
@@ -781,6 +795,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				60AAEBB8EE647EBEC204B4A5 /* BlockControlView.swift in Sources */,
+				55C3FA531B877A743C66E551 /* PassCenter.swift in Sources */,
 				70AC9AF4937F0A111D320D0B /* BrowserBlocker.swift in Sources */,
 				ABC2A1BDDD704436B73437A6 /* BlocklistMatcher.swift in Sources */,
 				8794655A8AA8C36A6CFB573D /* FocusDefaults.swift in Sources */,

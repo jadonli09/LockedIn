@@ -28,11 +28,11 @@ final class BrowserBlocker {
         "com.microsoft.edgemac": .chromium,
     ]
 
-    /// domain → pass expiry. Same rules as app passes: 120s, per-item, no stacking.
-    private var passes: [String: Date] = [:]
     private var poller: Timer?
     private var observers: [Any] = []
     private var checkInFlight = false
+    /// Domains whose pass ran out this session — relock gets the 3s fade.
+    private var recentlyPassed: Set<String> = []
 
     private init() {}
 
@@ -66,9 +66,6 @@ final class BrowserBlocker {
             poller?.invalidate()
             poller = nil
         }
-        if !FocusSessionManager.shared.hasSession {
-            passes = [:]
-        }
     }
 
     private func checkActiveTab() async {
@@ -94,10 +91,8 @@ final class BrowserBlocker {
         guard url.scheme != "file" else { return } // already on the block page
         guard let domain = BlocklistMatcher.domainMatches(host: url.host, blockedDomains: Defaults[.blockedDomains]) else { return }
 
-        let now = Date()
-        if let expiry = passes[domain], expiry > now { return }
-        let relocking = passes[domain] != nil
-        passes[domain] = nil
+        if PassCenter.shared.expiry(for: .domain(domain)) != nil { return }
+        let relocking = recentlyPassed.remove(domain) != nil
 
         await redirect(bundleID: bundleID, engine: engine, from: url, domain: domain, relock: relocking)
     }
@@ -129,12 +124,8 @@ final class BrowserBlocker {
               let domain = components.queryItems?.first(where: { $0.name == "domain" })?.value
         else { return }
 
-        let now = Date()
-        if let existing = passes[domain], existing > now {
-            // Passes don't stack.
-        } else {
-            passes[domain] = now.addingTimeInterval(BlocklistMatcher.passDuration)
-        }
+        PassCenter.shared.grant(kind: .domain(domain), name: domain)
+        recentlyPassed.insert(domain)
 
         // Send the tab back where it was going.
         if let back = components.queryItems?.first(where: { $0.name == "back" })?.value,

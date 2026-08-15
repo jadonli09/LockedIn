@@ -31,6 +31,46 @@ final class FocusSessionManager: ObservableObject {
     /// Set when the pause came from the idle monitor, so input can auto-resume.
     private(set) var pausedAutomatically: Bool = false
 
+    enum TransientEvent {
+        case started, paused, resumed, ended
+
+        var label: String {
+            switch self {
+            case .started: "Focus"
+            case .paused: "Paused"
+            case .resumed: "Resumed"
+            case .ended: "Ended"
+            }
+        }
+
+        var symbol: String {
+            switch self {
+            case .started, .resumed: "play.fill"
+            case .paused: "pause.fill"
+            case .ended: "checkmark"
+            }
+        }
+    }
+
+    /// Briefly non-nil after a state change so the collapsed island can pop a
+    /// small confirmation chip — physical feedback for ⌥⌘L.
+    @Published private(set) var transientEvent: TransientEvent?
+    private var transientTask: Task<Void, Never>?
+
+    private func announce(_ event: TransientEvent) {
+        withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
+            transientEvent = event
+        }
+        transientTask?.cancel()
+        transientTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(1.8))
+            guard let self, !Task.isCancelled else { return }
+            withAnimation(.spring(response: 0.45, dampingFraction: 1.0)) {
+                self.transientEvent = nil
+            }
+        }
+    }
+
     private var ticker: AnyCancellable?
     private var graceTask: Task<Void, Never>?
 
@@ -67,6 +107,7 @@ final class FocusSessionManager: ObservableObject {
         state = .startingFocus(preset: chosen, at: Date())
         persist()
         startTicker()
+        announce(.started)
         NotificationCenter.default.post(name: .focusPhaseDidChange, object: nil)
     }
 
@@ -76,6 +117,7 @@ final class FocusSessionManager: ObservableObject {
         s.pause(at: Date())
         state = s
         persist()
+        announce(.paused)
         NotificationCenter.default.post(name: .focusPhaseDidChange, object: nil)
     }
 
@@ -96,6 +138,7 @@ final class FocusSessionManager: ObservableObject {
         s.resume(at: Date())
         state = s
         persist()
+        announce(.resumed)
         NotificationCenter.default.post(name: .focusPhaseDidChange, object: nil)
     }
 
@@ -121,6 +164,7 @@ final class FocusSessionManager: ObservableObject {
         state = nil
         persist()
         stopTicker()
+        announce(.ended)
         NotificationCenter.default.post(name: .focusSessionDidEnd, object: nil)
     }
 

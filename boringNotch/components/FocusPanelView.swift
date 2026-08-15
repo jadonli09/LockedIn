@@ -16,11 +16,14 @@ struct FocusPanelView: View {
     @ObservedObject var focus = FocusSessionManager.shared
     @ObservedObject var music = MusicManager.shared
     @ObservedObject var sound = FocusSoundManager.shared
+    @ObservedObject var passCenter = PassCenter.shared
     @Default(.lastFocusPreset) var lastPreset
     @Default(.focusSoundVolume) var soundVolume
+    @Default(.lastFocusSound) var lastSound
 
     @State private var holdProgress: CGFloat = 0
     @State private var isHolding = false
+    @State private var showBlockControls = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -126,6 +129,12 @@ struct FocusPanelView: View {
 
     private var rightColumn: some View {
         HStack(spacing: 10) {
+            if let pass = passCenter.soonest {
+                passChip(pass)
+            }
+
+            blockControlButton
+
             if sound.isPlaying {
                 Slider(value: Binding(
                     get: { soundVolume },
@@ -133,25 +142,15 @@ struct FocusPanelView: View {
                 ), in: 0...1)
                 .controlSize(.mini)
                 .tint(.white.opacity(0.5))
-                .frame(width: 56)
+                .frame(width: 52)
                 .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .trailing)))
             }
 
-            Button {
-                withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
-                    sound.toggle()
-                }
-            } label: {
-                Image(systemName: "water.waves")
-                    .font(.system(size: 14, weight: .medium))
-                    .foregroundStyle(.white.opacity(sound.isPlaying ? 0.9 : 0.4))
-                    .symbolEffect(.variableColor.iterative, isActive: sound.isPlaying)
-            }
-            .buttonStyle(.plain)
+            soundButton
 
             if music.isPlaying || !music.isPlayerIdle {
                 MarqueeText(text: music.songTitle)
-                    .frame(width: 78, height: 16)
+                    .frame(width: 64, height: 16)
 
                 Button {
                     music.playPause()
@@ -164,5 +163,76 @@ struct FocusPanelView: View {
                 .buttonStyle(.plain)
             }
         }
+    }
+
+    /// Active 2-min pass: countdown + one tap to cancel it early.
+    private func passChip(_ pass: ActivePass) -> some View {
+        Button {
+            passCenter.cancel(id: pass.id)
+        } label: {
+            HStack(spacing: 4) {
+                Text(passCountdown(pass))
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .monospacedDigit()
+                Image(systemName: "xmark")
+                    .font(.system(size: 8, weight: .semibold))
+            }
+            .foregroundStyle(.white.opacity(0.65))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(Capsule().fill(.white.opacity(0.08)))
+        }
+        .buttonStyle(.plain)
+        .help("Cancel the 2-min pass for \(pass.name)")
+        .transition(.opacity.combined(with: .scale(scale: 0.9)))
+    }
+
+    private func passCountdown(_ pass: ActivePass) -> String {
+        let total = Int(pass.remaining(at: passCenter.now).rounded(.up))
+        return String(format: "%d:%02d", total / 60, total % 60)
+    }
+
+    private var blockControlButton: some View {
+        Button {
+            showBlockControls.toggle()
+        } label: {
+            Image(systemName: "shield")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white.opacity(showBlockControls ? 0.9 : 0.4))
+        }
+        .buttonStyle(.plain)
+        .popover(isPresented: $showBlockControls, arrowEdge: .bottom) {
+            BlockControlView()
+                .onAppear { PanelInteractionState.shared.holdOpen = true }
+                .onDisappear { PanelInteractionState.shared.holdOpen = false }
+        }
+    }
+
+    private var soundButton: some View {
+        Button {
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
+                sound.toggle()
+            }
+        } label: {
+            Image(systemName: "water.waves")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundStyle(.white.opacity(sound.isPlaying ? 0.9 : 0.4))
+                .symbolEffect(.variableColor.iterative, isActive: sound.isPlaying)
+        }
+        .buttonStyle(.plain)
+        .contextMenu {
+            ForEach(FocusSound.allCases) { choice in
+                Button {
+                    sound.select(choice)
+                } label: {
+                    if choice == lastSound {
+                        Label(choice.displayName, systemImage: "checkmark")
+                    } else {
+                        Text(choice.displayName)
+                    }
+                }
+            }
+        }
+        .help("Click to toggle; right-click to pick a sound")
     }
 }

@@ -15,6 +15,8 @@ struct ContentView: View {
     @EnvironmentObject var vm: BoringViewModel
     @ObservedObject var coordinator = BoringViewCoordinator.shared
     @ObservedObject var focus = FocusSessionManager.shared
+    @ObservedObject var passCenter = PassCenter.shared
+    @ObservedObject var interaction = PanelInteractionState.shared
     @Default(.focusAccent) var accent
     @Default(.showRemainingMinutes) var showRemainingMinutes
 
@@ -136,6 +138,13 @@ struct ContentView: View {
                             pulseOpacity = 0
                         }
                     }
+                    .onChange(of: interaction.holdOpen) { _, holding in
+                        // When the blocklist popover closes with the cursor
+                        // already elsewhere, finish the deferred island close.
+                        if !holding && !isHovering && vm.notchState == .open {
+                            vm.close()
+                        }
+                    }
                     .sensoryFeedback(.alignment, trigger: haptics)
                     .contextMenu {
                         Button("Settings") {
@@ -178,14 +187,15 @@ struct ContentView: View {
                     HelloAnimation(onFinish: {
                         vm.closeHello()
                     }).frame(
-                        width: getClosedNotchSize().width,
-                        height: 80
+                        width: openNotchSize.width - 96,
+                        height: 96
                     )
-                    .padding(.top, 40)
+                    .padding(.top, 24)
                     Spacer()
                 } else if vm.notchState == .open {
                     Rectangle().fill(.clear).frame(width: vm.closedNotchSize.width - 20, height: max(24, vm.effectiveClosedNotchHeight))
-                } else if focus.hasSession && showRemainingMinutes && !vm.hideOnClosed {
+                } else if !vm.hideOnClosed,
+                          (focus.hasSession && showRemainingMinutes) || focus.transientEvent != nil || passCenter.soonest != nil {
                     FocusClosedContent(
                         notchWidth: vm.closedNotchSize.width,
                         notchHeight: vm.effectiveClosedNotchHeight
@@ -256,7 +266,7 @@ struct ContentView: View {
                         self.isHovering = false
                     }
 
-                    if self.vm.notchState == .open {
+                    if self.vm.notchState == .open && !PanelInteractionState.shared.holdOpen {
                         self.vm.close()
                     }
                 }

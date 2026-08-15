@@ -2,43 +2,22 @@
 //  BlocklistMatcher.swift
 //  boringNotch
 //
-//  Pure matching + 2-minute-pass bookkeeping for the blocker, separated from
-//  AppBlocker so the unit test target can compile it without AppKit.
+//  Pure matching + 2-minute-pass bookkeeping for the blockers, separated from
+//  the managers so the unit test target can compile it without AppKit.
 //
 
 import Foundation
 
 struct BlocklistMatcher {
     var blockedBundleIDs: Set<String>
-    /// bundle id → pass expiry
-    var passes: [String: Date] = [:]
-
-    static let passDuration: TimeInterval = 120
 
     init(blockedBundleIDs: some Sequence<String>) {
         self.blockedBundleIDs = Set(blockedBundleIDs.map { $0.lowercased() })
     }
 
-    func isBlocked(bundleID: String?, at now: Date) -> Bool {
-        guard let bundleID = bundleID?.lowercased(), blockedBundleIDs.contains(bundleID) else { return false }
-        return !hasActivePass(bundleID: bundleID, at: now)
-    }
-
-    func hasActivePass(bundleID: String?, at now: Date) -> Bool {
-        guard let bundleID = bundleID?.lowercased(), let expiry = passes[bundleID] else { return false }
-        return expiry > now
-    }
-
-    /// Grants a 120s pass. Passes are per-item and don't stack: granting while
-    /// one is active keeps the earlier expiry.
-    mutating func grantPass(bundleID: String, at now: Date) -> Date {
-        let bundleID = bundleID.lowercased()
-        if let existing = passes[bundleID], existing > now {
-            return existing
-        }
-        let expiry = now.addingTimeInterval(Self.passDuration)
-        passes[bundleID] = expiry
-        return expiry
+    func isBlocklisted(bundleID: String?) -> Bool {
+        guard let bundleID = bundleID?.lowercased() else { return false }
+        return blockedBundleIDs.contains(bundleID)
     }
 
     /// Domain matching for the browser blocker: exact or subdomain match
@@ -54,8 +33,45 @@ struct BlocklistMatcher {
         }
         return nil
     }
+}
 
-    mutating func clearPasses() {
+/// The 2-minute pass ledger: passes are exactly 120s, per-item, don't stack,
+/// and aren't counted or logged anywhere. Keys are opaque ("app:com.x",
+/// "domain:x.com") so one ledger serves both blockers.
+struct PassBook {
+    private(set) var passes: [String: Date] = [:]
+
+    static let passDuration: TimeInterval = 120
+
+    func expiry(for key: String, at now: Date) -> Date? {
+        guard let expiry = passes[key], expiry > now else { return nil }
+        return expiry
+    }
+
+    func hasActivePass(for key: String, at now: Date) -> Bool {
+        expiry(for: key, at: now) != nil
+    }
+
+    /// Granting while a pass is active keeps the earlier expiry (no stacking).
+    @discardableResult
+    mutating func grant(_ key: String, at now: Date) -> Date {
+        if let existing = passes[key], existing > now {
+            return existing
+        }
+        let expiry = now.addingTimeInterval(Self.passDuration)
+        passes[key] = expiry
+        return expiry
+    }
+
+    mutating func revoke(_ key: String) {
+        passes[key] = nil
+    }
+
+    mutating func prune(at now: Date) {
+        passes = passes.filter { $0.value > now }
+    }
+
+    mutating func clear() {
         passes = [:]
     }
 }

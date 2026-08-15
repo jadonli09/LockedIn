@@ -3,9 +3,10 @@
 //  boringNotch
 //
 //  App blocking during focus periods. Watches app activations and drops the
-//  block overlay over blocklisted apps. Never force-quits anything — the
-//  overlay plus the return button is the whole mechanism. The 2-minute pass
-//  grants exactly 120s to one app, doesn't stack, and isn't logged anywhere.
+//  block overlay over blocklisted apps. Never force-quits anything — blocked
+//  apps are hidden, not killed, and a watchdog re-presents the overlay if a
+//  blocked app is ever frontmost without a pass. The 2-minute pass grants
+//  exactly 120s to one app, doesn't stack, and isn't logged anywhere.
 //
 
 import AppKit
@@ -26,7 +27,8 @@ final class AppBlocker {
     private let overlay = BlockOverlayController()
     private var workspaceObserver: Any?
     private var sessionObservers: [Any] = []
-    private var relockTask: Task<Void, Never>?
+    private var watchdog: Timer?
+    private var cancellables: Set<AnyCancellable> = []
     /// The last non-blocked app, so "Back to work" has somewhere to return.
     private var previousApp: NSRunningApplication?
 
@@ -35,7 +37,7 @@ final class AppBlocker {
     func start() {
         // Seed the return target so "Back to work" works for the first block.
         if let frontmost = NSWorkspace.shared.frontmostApplication,
-           !matcher.isBlocked(bundleID: frontmost.bundleIdentifier, at: Date()) {
+           !matcher.isBlocklisted(bundleID: frontmost.bundleIdentifier) {
             previousApp = frontmost
         }
 
@@ -72,82 +74,101 @@ final class AppBlocker {
         #endif
     }
 
-    private var cancellables: Set<AnyCancellable> = []
-
     private var blockingActive: Bool {
         let focus = FocusSessionManager.shared
         return focus.isRunning && focus.isFocusPhase
     }
 
+    private func shouldBlock(_ app: NSRunningApplication) -> Bool {
+        guard blockingActive, let bundleID = app.bundleIdentifier else { return false }
+        guard matcher.isBlocklisted(bundleID: bundleID) else { return false }
+        return PassCenter.shared.expiry(for: .app(bundleID: bundleID)) == nil
+    }
+
     private func handleActivation(_ app: NSRunningApplication?) {
         guard let app else { return }
-        guard blockingActive else {
-            previousApp = app
-            return
-        }
-
-        let now = Date()
-        if matcher.isBlocked(bundleID: app.bundleIdentifier, at: now) {
+        if shouldBlock(app) {
             presentOverlay(for: app)
-        } else {
-            if matcher.hasActivePass(bundleID: app.bundleIdentifier, at: now) {
-                scheduleRelock(for: app)
-            }
-            if !overlay.isVisible {
-                previousApp = app
-            }
+        } else if !matcher.isBlocklisted(bundleID: app.bundleIdentifier), !overlay.isVisible {
+            previousApp = app
         }
     }
 
     private func sessionStateChanged() {
         if blockingActive {
-            // Catch a blocked app that was already frontmost when the session began.
+            // Catch a blocked app that was already frontmost when the session
+            // began, and keep a watchdog so blocked apps stay blocked even if
+            // the overlay was dismissed without switching away.
             handleActivation(NSWorkspace.shared.frontmostApplication)
+            startWatchdog()
         } else {
             overlay.hide()
-            relockTask?.cancel()
+            stopWatchdog()
         }
         if !FocusSessionManager.shared.hasSession {
-            matcher.clearPasses()
+            PassCenter.shared.clearAll()
         }
     }
+
+    private func startWatchdog() {
+        guard watchdog == nil else { return }
+        watchdog = Timer.scheduledTimer(withTimeInterval: 1.5, repeats: true) { _ in
+            Task { @MainActor in
+                AppBlocker.shared.watchdogCheck()
+            }
+        }
+    }
+
+    private func stopWatchdog() {
+        watchdog?.invalidate()
+        watchdog = nil
+    }
+
+    /// Perpetual enforcement: whenever a blocked app is frontmost without a
+    /// pass — including right after the pass expires or after the overlay was
+    /// dismissed in place — the overlay comes back. Pass-expiry relock arrives
+    /// with the 3s fade warning.
+    private func watchdogCheck() {
+        guard blockingActive, !overlay.isVisible,
+              let frontmost = NSWorkspace.shared.frontmostApplication,
+              shouldBlock(frontmost) else { return }
+        let bundleID = frontmost.bundleIdentifier?.lowercased() ?? ""
+        let expiredPass = recentlyPassed.remove(bundleID) != nil
+        presentOverlay(for: frontmost, fadeIn: expiredPass ? 3 : 0)
+    }
+
+    /// Bundle ids whose pass ran out this session — used to pick the fade-in
+    /// (warning) presentation over the instant one.
+    private var recentlyPassed: Set<String> = []
 
     private func presentOverlay(for app: NSRunningApplication, fadeIn: TimeInterval = 0) {
         let name = app.localizedName ?? app.bundleIdentifier ?? "this app"
         overlay.show(appName: name, fadeIn: fadeIn) { [weak self] in
-            self?.backToWork()
+            self?.backToWork(hiding: app)
         } onPass: { [weak self] in
             self?.grantPass(to: app)
         }
     }
 
-    private func backToWork() {
+    /// Hide the blocked app (never quit it) so it can't be used behind the
+    /// dismissed overlay; reactivating it later re-triggers the block.
+    private func backToWork(hiding app: NSRunningApplication) {
         overlay.hide()
-        relockTask?.cancel()
-        previousApp?.activate()
+        app.hide()
+        if let previousApp, previousApp != app {
+            previousApp.activate()
+        }
     }
 
     private func grantPass(to app: NSRunningApplication) {
         guard let bundleID = app.bundleIdentifier else { return }
-        _ = matcher.grantPass(bundleID: bundleID, at: Date())
+        PassCenter.shared.grant(
+            kind: .app(bundleID: bundleID),
+            name: app.localizedName ?? bundleID
+        )
+        recentlyPassed.insert(bundleID.lowercased())
         overlay.hide()
-        scheduleRelock(for: app)
-    }
-
-    /// When the pass runs out and the app is still frontmost, the overlay
-    /// fades back in over 3 seconds — the fade is the warning.
-    private func scheduleRelock(for app: NSRunningApplication) {
-        guard let bundleID = app.bundleIdentifier,
-              let expiry = matcher.passes[bundleID.lowercased()] else { return }
-        relockTask?.cancel()
-        relockTask = Task { [weak self] in
-            let delay = max(0, expiry.timeIntervalSinceNow - 3)
-            try? await Task.sleep(for: .seconds(delay))
-            guard let self, !Task.isCancelled else { return }
-            guard self.blockingActive,
-                  NSWorkspace.shared.frontmostApplication?.bundleIdentifier == bundleID else { return }
-            self.presentOverlay(for: app, fadeIn: 3)
-        }
+        // The watchdog picks up expiry and relocks with the 3s fade.
     }
 
     #if DEBUG

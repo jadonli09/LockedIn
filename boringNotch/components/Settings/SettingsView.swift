@@ -27,6 +27,7 @@ struct SettingsView: View {
     @Default(.blockedBundleIDs) var blockedBundleIDs
     @Default(.blockedDomains) var blockedDomains
     @Default(.lastFocusPreset) var lastPreset
+    @Default(.mediaController) var mediaController
 
     @State private var newDomain: String = ""
 
@@ -121,6 +122,20 @@ struct SettingsView: View {
                     Button("Add") { addDomain() }
                         .disabled(newDomain.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+            }
+
+            Section("Media") {
+                Picker("Source", selection: $mediaController) {
+                    ForEach(MediaControllerType.allCases) { type in
+                        Text(type.rawValue).tag(type)
+                    }
+                }
+                .onChange(of: mediaController) {
+                    NotificationCenter.default.post(name: .mediaControllerChanged, object: nil)
+                }
+                Text("Pick Spotify to show and control Spotify directly in the island; focus sounds duck automatically while it plays.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Updates") {

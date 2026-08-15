@@ -162,42 +162,54 @@ final class BlocklistMatcherTests: XCTestCase {
 
     func testMatchingIsCaseInsensitive() {
         let m = BlocklistMatcher(blockedBundleIDs: ["com.Apple.TextEdit"])
-        XCTAssertTrue(m.isBlocked(bundleID: "com.apple.textedit", at: t0))
-        XCTAssertTrue(m.isBlocked(bundleID: "COM.APPLE.TEXTEDIT", at: t0))
-        XCTAssertFalse(m.isBlocked(bundleID: "com.apple.Safari", at: t0))
-        XCTAssertFalse(m.isBlocked(bundleID: nil, at: t0))
+        XCTAssertTrue(m.isBlocklisted(bundleID: "com.apple.textedit"))
+        XCTAssertTrue(m.isBlocklisted(bundleID: "COM.APPLE.TEXTEDIT"))
+        XCTAssertFalse(m.isBlocklisted(bundleID: "com.apple.Safari"))
+        XCTAssertFalse(m.isBlocklisted(bundleID: nil))
     }
 
     func testPassGrantsExactlyTwoMinutes() {
-        var m = BlocklistMatcher(blockedBundleIDs: ["a.b.c"])
-        let expiry = m.grantPass(bundleID: "a.b.c", at: t0)
+        var book = PassBook()
+        let expiry = book.grant("app:a.b.c", at: t0)
         XCTAssertEqual(expiry, t0.addingTimeInterval(120))
-        XCTAssertFalse(m.isBlocked(bundleID: "a.b.c", at: t0.addingTimeInterval(119)))
-        XCTAssertTrue(m.isBlocked(bundleID: "a.b.c", at: t0.addingTimeInterval(120)))
+        XCTAssertTrue(book.hasActivePass(for: "app:a.b.c", at: t0.addingTimeInterval(119)))
+        XCTAssertFalse(book.hasActivePass(for: "app:a.b.c", at: t0.addingTimeInterval(120)))
     }
 
     func testPassesDoNotStack() {
-        var m = BlocklistMatcher(blockedBundleIDs: ["a.b.c"])
-        let first = m.grantPass(bundleID: "a.b.c", at: t0)
-        let second = m.grantPass(bundleID: "a.b.c", at: t0.addingTimeInterval(60))
+        var book = PassBook()
+        let first = book.grant("app:a.b.c", at: t0)
+        let second = book.grant("app:a.b.c", at: t0.addingTimeInterval(60))
         XCTAssertEqual(first, second)
         // After the original expiry a fresh grant works again.
-        let third = m.grantPass(bundleID: "a.b.c", at: t0.addingTimeInterval(130))
+        let third = book.grant("app:a.b.c", at: t0.addingTimeInterval(130))
         XCTAssertEqual(third, t0.addingTimeInterval(250))
     }
 
     func testPassesArePerItem() {
-        var m = BlocklistMatcher(blockedBundleIDs: ["a.b.c", "x.y.z"])
-        _ = m.grantPass(bundleID: "a.b.c", at: t0)
-        XCTAssertFalse(m.isBlocked(bundleID: "a.b.c", at: t0.addingTimeInterval(10)))
-        XCTAssertTrue(m.isBlocked(bundleID: "x.y.z", at: t0.addingTimeInterval(10)))
+        var book = PassBook()
+        book.grant("app:a.b.c", at: t0)
+        XCTAssertTrue(book.hasActivePass(for: "app:a.b.c", at: t0.addingTimeInterval(10)))
+        XCTAssertFalse(book.hasActivePass(for: "domain:x.com", at: t0.addingTimeInterval(10)))
     }
 
-    func testClearPassesRelocksEverything() {
-        var m = BlocklistMatcher(blockedBundleIDs: ["a.b.c"])
-        _ = m.grantPass(bundleID: "a.b.c", at: t0)
-        m.clearPasses()
-        XCTAssertTrue(m.isBlocked(bundleID: "a.b.c", at: t0.addingTimeInterval(10)))
+    func testRevokeCancelsAPassEarly() {
+        var book = PassBook()
+        book.grant("domain:x.com", at: t0)
+        book.revoke("domain:x.com")
+        XCTAssertFalse(book.hasActivePass(for: "domain:x.com", at: t0.addingTimeInterval(10)))
+        // A fresh grant after cancellation works immediately.
+        XCTAssertEqual(book.grant("domain:x.com", at: t0.addingTimeInterval(20)), t0.addingTimeInterval(140))
+    }
+
+    func testClearAndPrune() {
+        var book = PassBook()
+        book.grant("app:a.b.c", at: t0)
+        book.grant("domain:x.com", at: t0.addingTimeInterval(60))
+        book.prune(at: t0.addingTimeInterval(130))
+        XCTAssertEqual(Array(book.passes.keys), ["domain:x.com"])
+        book.clear()
+        XCTAssertTrue(book.passes.isEmpty)
     }
 
     func testDomainMatching() {

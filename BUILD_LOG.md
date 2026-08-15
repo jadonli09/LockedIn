@@ -80,3 +80,15 @@
 - End-of-session pulse captured on screen (amber outline around island) + auto-advance to a fresh full break arc.
 - README rewritten for LockedIn (GPL-3.0 preserved, upstream credited). FINAL_REPORT.md + MORNING_CHECKLIST.md written.
 - Total elapsed 17:55 → 18:45 (~50 min of the 240-min budget). All Musts, all Shoulds, all Stretches shipped.
+
+## 2026-08-15 — Iteration 2 (operator feedback round)
+- Numeral clipped by hardware notch: closed-state center spacer now covers notchWidth+8 so both side slots sit fully outside the physical notch; side slots widened to 38pt.
+- Glow aesthetics: span widened to notchWidth−8 (was inset 28pt total), soft blur bloom added under both the rest glow and the session arc so it reads as light, not a hairline.
+- Hello animation now sized like the open panel (openNotchSize.width−96 × 96) instead of a square blob.
+- ⌥⌘L feedback: transient chip pops from the left of the notch for 1.8s on every state change (▶ Focus / ⏸ Paused / ▶ Resumed / ✓ Ended), springs in/out; island renders closed content whenever a chip or pass is active.
+- Blocker hardening: "Back to work" now HIDES the blocked app (never quits) before returning to the previous app; a 1.5s watchdog re-presents the overlay any time a blocked app is frontmost without a pass — perpetual enforcement, incl. pass expiry (with the 3s fade) and the dismissed-overlay-in-place case the operator hit with RStudio.
+- Pass visibility: new PassCenter (shared observable ledger over pure PassBook; matcher pass logic refactored out, tests updated → 21/21 green). Closed island shows the pass countdown in place of the minutes numeral; expanded panel shows a cancellable pass chip; both blockers grant/read through PassCenter.
+- Island blocklist controls: shield button in the panel opens a compact popover — active passes w/ cancel, blocked apps (native picker), blocked websites (add/remove) — no Settings window needed. PanelInteractionState.holdOpen keeps the island from auto-closing while the popover or app picker is up.
+- Sounds: synthesized Rain (hiss + droplet pings) and Ocean (LFO-swelled brown noise + crest hiss) loops added alongside Brown Noise; right-click the wave icon to pick; selection crossfades if already playing.
+- Spotify: Media section in Settings exposes the existing controller stack (Now Playing / Apple Music / Spotify / YouTube Music) with live switching via .mediaControllerChanged.
+- Verification note: operator now active on the machine (clamshell, 2 external QHD displays) — no synthetic input posted this round; build clean, 21/21 tests, new build left running for hands-on check.
