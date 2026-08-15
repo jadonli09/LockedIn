@@ -95,6 +95,11 @@ final class FocusSessionManager: ObservableObject {
         }
     }
 
+    /// Pulse the island without a chime — physical feedback for the global hotkey.
+    func visualPulse() {
+        endPulse += 1
+    }
+
     func endSession() {
         graceTask?.cancel()
         inGrace = false

@@ -258,6 +258,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
         }
 
+        KeyboardShortcuts.onKeyDown(for: .toggleFocusSession) {
+            Task { @MainActor in
+                FocusSessionManager.shared.toggle()
+                FocusSessionManager.shared.visualPulse()
+            }
+        }
+
         if !Defaults[.showOnAllDisplays] {
             let viewModel = self.vm
             let window = createBoringNotchWindow(

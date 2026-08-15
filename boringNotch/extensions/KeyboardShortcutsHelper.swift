@@ -9,6 +9,10 @@ import KeyboardShortcuts
 import SwiftUI
 import Carbon
 
+extension KeyboardShortcuts.Name {
+    /// ⌥⌘L — start/pause a focus session from anywhere.
+    static let toggleFocusSession = Self("toggleFocusSession", default: .init(.l, modifiers: [.option, .command]))
+}
 
 extension View {
     

@@ -197,7 +197,7 @@ struct ContentView: View {
             .zIndex(2)
             if vm.notchState == .open {
                 VStack {
-                    FocusPanelPlaceholder()
+                    FocusPanelView()
                 }
                 .transition(
                     .scale(scale: 0.8, anchor: .top)
@@ -313,15 +313,6 @@ struct ContentView: View {
                 haptics.toggle()
             }
         }
-    }
-}
-
-/// Temporary open-state content until the Pomodoro panel lands (Phase 3).
-private struct FocusPanelPlaceholder: View {
-    var body: some View {
-        Rectangle()
-            .fill(.black)
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 

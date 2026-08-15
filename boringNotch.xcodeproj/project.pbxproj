@@ -77,6 +77,9 @@
 		40F5B90630AEF4AE696FC14A /* FocusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86AFACAB39A71B0A433E5AD /* FocusModels.swift */; };
 		07E70C2C13B779461E862CFA /* FocusSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6EFA3BFE155381ACD8C10F47 /* FocusSessionManager.swift */; };
 		09CCD99C74E8EAA745C243E7 /* FocusIdleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E74DFB299459F67E29ADCA6A /* FocusIdleView.swift */; };
+		3DB99A78736E4236282D99BF /* chime.wav in Resources */ = {isa = PBXBuildFile; fileRef = 85051445F4B470F9F6FA19AD /* chime.wav */; };
+		BEB132C1EE75300D7CD6B9CC /* MarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 995E7AA8D1D610A9655003E7 /* MarqueeText.swift */; };
+		DD7AB1F8620C5FB1768F4EF9 /* FocusPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68C817527A1B90DD3BB844A /* FocusPanelView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -177,6 +180,9 @@
 		E86AFACAB39A71B0A433E5AD /* FocusModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusModels.swift; sourceTree = "<group>"; };
 		6EFA3BFE155381ACD8C10F47 /* FocusSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusSessionManager.swift; sourceTree = "<group>"; };
 		E74DFB299459F67E29ADCA6A /* FocusIdleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusIdleView.swift; sourceTree = "<group>"; };
+		85051445F4B470F9F6FA19AD /* chime.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = chime.wav; sourceTree = "<group>"; };
+		995E7AA8D1D610A9655003E7 /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
+		C68C817527A1B90DD3BB844A /* FocusPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusPanelView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -332,6 +338,8 @@
 		1471639B2C5D362F0068B555 /* components */ = {
 			isa = PBXGroup;
 			children = (
+				C68C817527A1B90DD3BB844A /* FocusPanelView.swift */,
+				995E7AA8D1D610A9655003E7 /* MarqueeText.swift */,
 				E74DFB299459F67E29ADCA6A /* FocusIdleView.swift */,
 				B141C23B2CA5F50900AC8CC8 /* Onboarding */,
 				B1C448992C97375A001F0858 /* Tips */,
@@ -397,6 +405,7 @@
 		14CEF4142C5CAED300855D72 /* boringNotch */ = {
 			isa = PBXGroup;
 			children = (
+				85051445F4B470F9F6FA19AD /* chime.wav */,
 				11F748672EC9AC9600F841DB /* XPCHelperClient */,
 				116398942DF5D6B40052E6AF /* Providers */,
 				14288DE22C6E016F00B9F80C /* observers */,
@@ -684,6 +693,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3DB99A78736E4236282D99BF /* chime.wav in Resources */,
 				14CEF41D2C5CAED400855D72 /* Preview Assets.xcassets in Resources */,
 				14CEF41A2C5CAED400855D72 /* Assets.xcassets in Resources */,
 				112B0EB82E30DD0F00562D6C /* MediaRemoteAdapterTestClient in Resources */,
@@ -706,6 +716,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DD7AB1F8620C5FB1768F4EF9 /* FocusPanelView.swift in Sources */,
+				BEB132C1EE75300D7CD6B9CC /* MarqueeText.swift in Sources */,
 				09CCD99C74E8EAA745C243E7 /* FocusIdleView.swift in Sources */,
 				07E70C2C13B779461E862CFA /* FocusSessionManager.swift in Sources */,
 				40F5B90630AEF4AE696FC14A /* FocusModels.swift in Sources */,

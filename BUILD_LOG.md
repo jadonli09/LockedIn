@@ -22,3 +22,13 @@
 - Decisions: arc "drains left-to-right" = remaining time anchored trailing, empties from the left; long break = 3× short break; island widens symmetrically by 26pt/side for the numeral (left side stays black) so it remains centered on the hardware notch.
 - Pulse: accent stroke flash on the island shape, 0.5s ease-out, triggered by endPulse counter.
 - Build green; glow verified by pixel inspection: bottom-edge pixels (33,26,20) = amber@15% over black.
+
+## 2026-08-14 18:17 PDT — Phase 3: Pomodoro + expanded UI + hotkey (18:11–18:17)
+- FocusPanelView: play/pause circle (left), large rounded-mono timer + phase label (center), Now Playing marquee + play/pause (right, only when media active). 5s hold-to-confirm white ring on center ends session early. Tap center while idle cycles the three presets (25/5 → 50/10 → 90/15) — decision: presets picked by tapping the idle time display, keeps island at ≤5 interactive elements.
+- MarqueeText rewritten minimal (upstream one died with Live activities).
+- openNotchSize 640×190 → 520×124: single-row panel. Spring curves untouched.
+- chime.wav synthesized (880/1320/1760 Hz partials, exp decay, 0.9s, −6 dBFS) and registered as bundle resource.
+- ⌥⌘L via KeyboardShortcuts (.toggleFocusSession) → toggle + island pulse. Verified live: synthetic ⌥⌘L started a session.
+- Verified end-to-end: injected 60s session with 5s left via defaults → app restored it on relaunch (persistence ✓), expired → advanced to shortBreak 300s, completedFocusCount=1 (auto-advance + grace ✓). chime.wav present in bundle.
+- Screenshots: expanded panel (25:00/READY), closed running state (amber arc draining + "25" numeral @60% white right of notch).
+- Known: synthetic CGEvent hover doesn't trigger onHover open (tap + hotkey verified instead); hover-by-hand is a morning-checklist item. A synthetic click on the open panel's play button was swallowed by an overlapping window — hotkey path used for automation instead.
