@@ -59,3 +59,9 @@
 - Refactor for testability: FocusModels stripped of Defaults dependency (keys+Serializable moved to models/FocusDefaults.swift); BlocklistMatcher moved out of AppBlocker.
 - 20 tests: state machine (start/elapse/expiry/pause/resume/no-op double transitions), backdated idle-pause accounting incl. clamp, phase advancement + every-4th long break + disable, Codable persistence round-trip + relaunch-by-timestamps, matcher (case-insensitivity, 120s pass, non-stacking, per-item, clear, domain matching incl. subdomains and suffix-spoof rejection).
 - `xcodebuild -scheme LockedInTests test` → TEST SUCCEEDED, 20/20 passed.
+
+## 2026-08-14 18:38 PDT — Phase 7 (stretch): Browser tab blocker + lockedin:// pass (18:31–18:38)
+- BrowserBlocker: 2s poll of the FRONTMOST app only; if it's Safari/Chrome/Arc/Edge, reads the active tab URL via AppleScript (AppleScriptHelper), matches with BlocklistMatcher.domainMatches (already unit-tested), redirects the tab to bundled lockedin.html with ?left/domain/back/relock params. Never touches file:// URLs (no redirect loop). Domain passes: 120s, per-item, non-stacking; relock re-presents the page with a 3s CSS fade (?relock=1).
+- lockedin:// URL scheme registered in Info.plist (+ NSAppleEventsUsageDescription for the Automation prompt); AppDelegate application(_:open:) routes to handlePassURL, which grants the pass and AppleScripts the tab back to the original URL.
+- Block page visually verified in a browser (fallback rendering without params confirmed — `open` strips queries).
+- LIMITATION: live redirect flow needs per-browser Automation permission → morning checklist. Code is inert without it (try? everywhere), exactly as spec prescribes.

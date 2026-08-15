@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Locked in</title>
+<style>
+  html, body {
+    margin: 0;
+    height: 100%;
+    background: #000;
+    color: #fff;
+    font-family: ui-rounded, -apple-system, "SF Pro Rounded", sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  body.relock { animation: fadein 3s ease-out; }
+  @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+  .stack { text-align: center; }
+  h1 {
+    font-size: 34px;
+    font-weight: 600;
+    margin: 0 0 28px;
+    font-variant-numeric: tabular-nums;
+  }
+  a.pass {
+    color: rgba(255, 255, 255, 0.35);
+    font-size: 12px;
+    text-decoration: none;
+  }
+</style>
+</head>
+<body>
+<div class="stack">
+  <h1 id="title">Locked in</h1>
+  <a class="pass" id="pass" href="#" hidden>2-min pass</a>
+</div>
+<script>
+  const params = new URLSearchParams(location.search);
+  const left = params.get("left");
+  document.getElementById("title").textContent = left ? `Locked in — ${left} left` : "Locked in";
+  if (params.get("relock") === "1") document.body.classList.add("relock");
+  const domain = params.get("domain");
+  if (domain) {
+    const pass = document.getElementById("pass");
+    pass.hidden = false;
+    pass.href = "lockedin://pass?domain=" + encodeURIComponent(domain)
+      + "&back=" + encodeURIComponent(params.get("back") || ("https://" + domain));
+  }
+</script>
+</body>
+</html>

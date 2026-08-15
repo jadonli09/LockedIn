@@ -89,6 +89,8 @@
 		ABC2A1BDDD704436B73437A6 /* BlocklistMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD0218F4842EEEAE35CA3F7 /* BlocklistMatcher.swift */; };
 		AA1000000000000000000009 /* FocusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86AFACAB39A71B0A433E5AD /* FocusModels.swift */; };
 		AA100000000000000000000A /* BlocklistMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD0218F4842EEEAE35CA3F7 /* BlocklistMatcher.swift */; };
+		70AC9AF4937F0A111D320D0B /* BrowserBlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 743A98C4DFF40A212319A1FF /* BrowserBlocker.swift */; };
+		905CD8CED9E6D21B945EAA09 /* lockedin.html in Resources */ = {isa = PBXBuildFile; fileRef = F98AC469894D222CCA5F762B /* lockedin.html */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -200,6 +202,8 @@
 		2C60EDDFDB435E71A3118958 /* FocusDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusDefaults.swift; sourceTree = "<group>"; };
 		9BD0218F4842EEEAE35CA3F7 /* BlocklistMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlocklistMatcher.swift; sourceTree = "<group>"; };
 		AA1000000000000000000001 /* LockedInTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LockedInTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		743A98C4DFF40A212319A1FF /* BrowserBlocker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserBlocker.swift; sourceTree = "<group>"; };
+		F98AC469894D222CCA5F762B /* lockedin.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = lockedin.html; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -386,6 +390,7 @@
 		147163B52C5D804B0068B555 /* managers */ = {
 			isa = PBXGroup;
 			children = (
+				743A98C4DFF40A212319A1FF /* BrowserBlocker.swift */,
 				9AB800F27C62ADDF53F7FF7E /* AppBlocker.swift */,
 				F4B37CC5444115B89130DF9B /* FocusSoundManager.swift */,
 				A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */,
@@ -436,6 +441,7 @@
 		14CEF4142C5CAED300855D72 /* boringNotch */ = {
 			isa = PBXGroup;
 			children = (
+				F98AC469894D222CCA5F762B /* lockedin.html */,
 				D1E26F329760655E7206F54D /* brownnoise.wav */,
 				85051445F4B470F9F6FA19AD /* chime.wav */,
 				11F748672EC9AC9600F841DB /* XPCHelperClient */,
@@ -750,6 +756,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				905CD8CED9E6D21B945EAA09 /* lockedin.html in Resources */,
 				BFCC2C401DD2BD18448FDA17 /* brownnoise.wav in Resources */,
 				3DB99A78736E4236282D99BF /* chime.wav in Resources */,
 				14CEF41D2C5CAED400855D72 /* Preview Assets.xcassets in Resources */,
@@ -774,6 +781,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				70AC9AF4937F0A111D320D0B /* BrowserBlocker.swift in Sources */,
 				ABC2A1BDDD704436B73437A6 /* BlocklistMatcher.swift in Sources */,
 				8794655A8AA8C36A6CFB573D /* FocusDefaults.swift in Sources */,
 				8E037119672CA181531DD259 /* BlockOverlayView.swift in Sources */,

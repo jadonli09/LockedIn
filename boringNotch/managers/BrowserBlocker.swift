@@ -1,0 +1,156 @@
+//
+//  BrowserBlocker.swift
+//  boringNotch
+//
+//  Website blocking v1: poll the frontmost browser's active tab every 2s
+//  during focus periods via AppleScript. On a domain match, redirect the tab
+//  to the bundled block page. No /etc/hosts, no helper, no proxy — per spec.
+//  Requires per-browser Automation permission; silently inert without it.
+//
+
+import AppKit
+import Defaults
+import SwiftUI
+
+@MainActor
+final class BrowserBlocker {
+    static let shared = BrowserBlocker()
+
+    private enum Engine {
+        case safari
+        case chromium
+    }
+
+    private static let browsers: [String: Engine] = [
+        "com.apple.safari": .safari,
+        "com.google.chrome": .chromium,
+        "company.thebrowser.browser": .chromium, // Arc
+        "com.microsoft.edgemac": .chromium,
+    ]
+
+    /// domain → pass expiry. Same rules as app passes: 120s, per-item, no stacking.
+    private var passes: [String: Date] = [:]
+    private var poller: Timer?
+    private var observers: [Any] = []
+    private var checkInFlight = false
+
+    private init() {}
+
+    func start() {
+        for name in [Notification.Name.focusPhaseDidChange, .focusSessionDidEnd] {
+            observers.append(NotificationCenter.default.addObserver(
+                forName: name, object: nil, queue: .main
+            ) { _ in
+                Task { @MainActor in
+                    BrowserBlocker.shared.sessionStateChanged()
+                }
+            })
+        }
+        sessionStateChanged()
+    }
+
+    private var blockingActive: Bool {
+        let focus = FocusSessionManager.shared
+        return focus.isRunning && focus.isFocusPhase
+    }
+
+    private func sessionStateChanged() {
+        if blockingActive, poller == nil {
+            let timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
+                Task { @MainActor in
+                    await BrowserBlocker.shared.checkActiveTab()
+                }
+            }
+            poller = timer
+        } else if !blockingActive {
+            poller?.invalidate()
+            poller = nil
+        }
+        if !FocusSessionManager.shared.hasSession {
+            passes = [:]
+        }
+    }
+
+    private func checkActiveTab() async {
+        guard !checkInFlight, blockingActive else { return }
+        guard let frontmost = NSWorkspace.shared.frontmostApplication,
+              let bundleID = frontmost.bundleIdentifier?.lowercased(),
+              let engine = Self.browsers[bundleID] else { return }
+        checkInFlight = true
+        defer { checkInFlight = false }
+
+        let urlScript = switch engine {
+        case .safari:
+            "tell application id \"\(bundleID)\" to get URL of current tab of front window"
+        case .chromium:
+            "tell application id \"\(bundleID)\" to get URL of active tab of front window"
+        }
+
+        // Missing Automation permission or no window: silently do nothing.
+        guard let descriptor = try? await AppleScriptHelper.execute(urlScript),
+              let urlString = descriptor.stringValue,
+              let url = URL(string: urlString) else { return }
+
+        guard url.scheme != "file" else { return } // already on the block page
+        guard let domain = BlocklistMatcher.domainMatches(host: url.host, blockedDomains: Defaults[.blockedDomains]) else { return }
+
+        let now = Date()
+        if let expiry = passes[domain], expiry > now { return }
+        let relocking = passes[domain] != nil
+        passes[domain] = nil
+
+        await redirect(bundleID: bundleID, engine: engine, from: url, domain: domain, relock: relocking)
+    }
+
+    private func redirect(bundleID: String, engine: Engine, from original: URL, domain: String, relock: Bool) async {
+        guard var components = Bundle.main.url(forResource: "lockedin", withExtension: "html")
+            .flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else { return }
+        components.queryItems = [
+            URLQueryItem(name: "left", value: FocusSessionManager.shared.remainingTimeText),
+            URLQueryItem(name: "domain", value: domain),
+            URLQueryItem(name: "back", value: original.absoluteString),
+            URLQueryItem(name: "relock", value: relock ? "1" : "0"),
+        ]
+        guard let blockURL = components.url?.absoluteString else { return }
+
+        let setScript = switch engine {
+        case .safari:
+            "tell application id \"\(bundleID)\" to set URL of current tab of front window to \"\(blockURL)\""
+        case .chromium:
+            "tell application id \"\(bundleID)\" to set URL of active tab of front window to \"\(blockURL)\""
+        }
+        try? await AppleScriptHelper.executeVoid(setScript)
+    }
+
+    /// Handles lockedin://pass?domain=x&back=url from the block page.
+    func handlePassURL(_ url: URL) {
+        guard url.scheme == "lockedin", url.host == "pass" || url.path == "pass",
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+              let domain = components.queryItems?.first(where: { $0.name == "domain" })?.value
+        else { return }
+
+        let now = Date()
+        if let existing = passes[domain], existing > now {
+            // Passes don't stack.
+        } else {
+            passes[domain] = now.addingTimeInterval(BlocklistMatcher.passDuration)
+        }
+
+        // Send the tab back where it was going.
+        if let back = components.queryItems?.first(where: { $0.name == "back" })?.value,
+           let backURL = URL(string: back),
+           let frontmost = NSWorkspace.shared.frontmostApplication,
+           let bundleID = frontmost.bundleIdentifier?.lowercased(),
+           let engine = Self.browsers[bundleID] {
+            Task { @MainActor in
+                let script = switch engine {
+                case .safari:
+                    "tell application id \"\(bundleID)\" to set URL of current tab of front window to \"\(backURL.absoluteString)\""
+                case .chromium:
+                    "tell application id \"\(bundleID)\" to set URL of active tab of front window to \"\(backURL.absoluteString)\""
+                }
+                try? await AppleScriptHelper.executeVoid(script)
+            }
+        }
+    }
+}

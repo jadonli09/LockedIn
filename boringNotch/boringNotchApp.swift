@@ -260,6 +260,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         FocusBehaviorCoordinator.shared.start()
         AppBlocker.shared.start()
+        BrowserBlocker.shared.start()
 
         KeyboardShortcuts.onKeyDown(for: .toggleFocusSession) {
             Task { @MainActor in
@@ -279,6 +280,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         }
 
         previousScreens = NSScreen.screens
+    }
+
+    func application(_ application: NSApplication, open urls: [URL]) {
+        for url in urls {
+            BrowserBlocker.shared.handlePassURL(url)
+        }
     }
 
     @objc func screenConfigurationDidChange() {
