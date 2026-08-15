@@ -74,10 +74,10 @@ struct ContentView: View {
                             .frame(height: 1)
                             .padding(.horizontal, topCornerRadius)
                     }
-                    .overlay(alignment: .bottom) {
+                    .overlay {
                         if vm.notchState == .closed, !coordinator.helloAnimationRunning,
                            vm.effectiveClosedNotchHeight > 0 {
-                            FocusIdleUnderlay(notchWidth: vm.closedNotchSize.width)
+                            FocusIdleUnderlay()
                         }
                     }
                     .overlay {

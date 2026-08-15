@@ -12,46 +12,49 @@
 import Defaults
 import SwiftUI
 
-/// Bottom-edge accent line, overlaid on the collapsed island shape.
+/// Bottom-edge accent line, overlaid on the collapsed island shape. Spans the
+/// island's *actual* rendered width — which is wider than the notch while the
+/// numeral or a chip is showing — so the line always reaches edge to edge.
 struct FocusIdleUnderlay: View {
     @ObservedObject var focus = FocusSessionManager.shared
     @Default(.focusAccent) var accent
 
-    let notchWidth: CGFloat
-
-    // Nearly full-width: stop just short of the bottom corner curves.
-    private var lineSpan: CGFloat { max(0, notchWidth - 8) }
-
     var body: some View {
-        Group {
-            if focus.hasSession {
-                // Remaining time, anchored at the trailing edge: the line
-                // visibly drains from left to right as the phase elapses.
-                Capsule()
-                    .fill(accent.color)
-                    .frame(width: max(0, lineSpan * (1 - focus.progress)), height: 2)
-                    .background(alignment: .trailing) {
-                        Capsule()
-                            .fill(accent.color)
-                            .frame(width: max(0, lineSpan * (1 - focus.progress)), height: 3)
-                            .blur(radius: 3)
-                    }
-                    .frame(width: lineSpan, alignment: .trailing)
-                    .opacity(focus.isPaused ? 0.35 : 0.9)
-                    .animation(.spring(response: 0.45, dampingFraction: 1.0), value: focus.progress)
-            } else {
-                // Rest state: 1px line with a soft bloom beneath so it reads
-                // as a glow rather than a hairline.
-                Capsule()
-                    .fill(accent.color.opacity(0.15))
-                    .frame(width: lineSpan, height: 1)
-                    .background {
-                        Capsule()
-                            .fill(accent.color.opacity(0.12))
-                            .frame(width: lineSpan, height: 2.5)
-                            .blur(radius: 2.5)
-                    }
+        GeometryReader { geo in
+            // Stop just short of the bottom corner curves.
+            let span = max(0, geo.size.width - 10)
+            ZStack(alignment: .bottom) {
+                Color.clear
+                if focus.hasSession {
+                    // Remaining time, anchored at the trailing edge: the line
+                    // visibly drains from left to right as the phase elapses.
+                    Capsule()
+                        .fill(accent.color)
+                        .frame(width: max(0, span * (1 - focus.progress)), height: 2)
+                        .background(alignment: .trailing) {
+                            Capsule()
+                                .fill(accent.color)
+                                .frame(width: max(0, span * (1 - focus.progress)), height: 3)
+                                .blur(radius: 3)
+                        }
+                        .frame(width: span, alignment: .trailing)
+                        .opacity(focus.isPaused ? 0.35 : 0.9)
+                        .animation(.spring(response: 0.45, dampingFraction: 1.0), value: focus.progress)
+                } else {
+                    // Rest state: 1px line with a soft bloom beneath so it
+                    // reads as a glow rather than a hairline.
+                    Capsule()
+                        .fill(accent.color.opacity(0.15))
+                        .frame(width: span, height: 1)
+                        .background {
+                            Capsule()
+                                .fill(accent.color.opacity(0.12))
+                                .frame(width: span, height: 2.5)
+                                .blur(radius: 2.5)
+                        }
+                }
             }
+            .frame(width: geo.size.width, height: geo.size.height)
         }
         .allowsHitTesting(false)
     }

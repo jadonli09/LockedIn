@@ -1,0 +1,37 @@
+#!/bin/bash
+# LockedIn control: lockedin start|stop|restart|build|logs
+set -e
+REPO="$(cd "$(dirname "$0")/.." && pwd)"
+APP="$REPO/build/DerivedData/Build/Products/Debug/boringNotch.app"
+
+case "${1:-restart}" in
+  stop)
+    osascript -e 'quit app "boringNotch"' 2>/dev/null || true
+    echo "LockedIn stopped."
+    ;;
+  start)
+    open "$APP"
+    echo "LockedIn started."
+    ;;
+  restart)
+    osascript -e 'quit app "boringNotch"' 2>/dev/null || true
+    sleep 1
+    open "$APP"
+    echo "LockedIn restarted."
+    ;;
+  build)
+    cd "$REPO"
+    xcodebuild -scheme boringNotch -configuration Debug build \
+      -derivedDataPath build/DerivedData \
+      CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO | tail -2
+    codesign --force --deep -s - "$APP"
+    osascript -e 'quit app "boringNotch"' 2>/dev/null || true
+    sleep 1
+    open "$APP"
+    echo "LockedIn rebuilt and restarted."
+    ;;
+  *)
+    echo "usage: lockedin start|stop|restart|build" >&2
+    exit 1
+    ;;
+esac

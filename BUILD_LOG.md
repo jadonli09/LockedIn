@@ -92,3 +92,8 @@
 - Sounds: synthesized Rain (hiss + droplet pings) and Ocean (LFO-swelled brown noise + crest hiss) loops added alongside Brown Noise; right-click the wave icon to pick; selection crossfades if already playing.
 - Spotify: Media section in Settings exposes the existing controller stack (Now Playing / Apple Music / Spotify / YouTube Music) with live switching via .mediaControllerChanged.
 - Verification note: operator now active on the machine (clamshell, 2 external QHD displays) — no synthetic input posted this round; build clean, 21/21 tests, new build left running for hands-on check.
+
+## 2026-08-15 — Iteration 3
+- Session arc/glow now spans the island's actual rendered width via GeometryReader (was pinned to notch width, so it floated centered once the island widened for the numeral — operator screenshot confirmed).
+- Browser table extended: Comet (ai.perplexity.comet), Opera, Brave, Vivaldi, Dia — all verified/known to ship the standard Chromium scripting dictionary (checked via sdef for the installed ones).
+- scripts/lockedin CLI: start | stop | restart | build (build also re-signs and relaunches).

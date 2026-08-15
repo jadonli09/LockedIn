@@ -21,11 +21,18 @@ final class BrowserBlocker {
         case chromium
     }
 
+    // Every Chromium fork here ships the same scripting dictionary
+    // (window → active tab → URL), verified via `sdef` where installed.
     private static let browsers: [String: Engine] = [
         "com.apple.safari": .safari,
         "com.google.chrome": .chromium,
         "company.thebrowser.browser": .chromium, // Arc
+        "company.thebrowser.dia": .chromium, // Dia
         "com.microsoft.edgemac": .chromium,
+        "ai.perplexity.comet": .chromium, // Comet
+        "com.operasoftware.opera": .chromium,
+        "com.brave.browser": .chromium,
+        "com.vivaldi.vivaldi": .chromium,
     ]
 
     private var poller: Timer?
