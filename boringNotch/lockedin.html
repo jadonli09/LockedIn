@@ -160,13 +160,20 @@
     document.documentElement.style.setProperty("--accent", accent);
   }
 
+  // Thread the browser's identity through both actions, so the app knows
+  // which browser to command even when it isn't frontmost.
+  const browser = params.get("b") || "";
+  document.querySelector("a.primary").href =
+    "lockedin://close?b=" + encodeURIComponent(browser);
+
   const domain = params.get("domain");
   if (domain) {
     document.getElementById("domain-label").textContent = domain;
     const pass = document.getElementById("pass");
     pass.hidden = false;
     pass.href = "lockedin://pass?domain=" + encodeURIComponent(domain)
-      + "&back=" + encodeURIComponent(params.get("back") || ("https://" + domain));
+      + "&back=" + encodeURIComponent(params.get("back") || ("https://" + domain))
+      + "&b=" + encodeURIComponent(browser);
   }
 
   // Live countdown + attended-minute dots. `until` is the phase deadline

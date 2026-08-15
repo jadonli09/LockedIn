@@ -132,6 +132,7 @@ final class BrowserBlocker {
             URLQueryItem(name: "until", value: String(deadlineMillis)),
             URLQueryItem(name: "duration", value: String(durationSeconds)),
             URLQueryItem(name: "accent", value: Defaults[.focusAccent].hex),
+            URLQueryItem(name: "b", value: bundleID),
             URLQueryItem(name: "domain", value: domain),
             URLQueryItem(name: "back", value: original.absoluteString),
             URLQueryItem(name: "relock", value: relock ? "1" : "0"),
@@ -148,16 +149,20 @@ final class BrowserBlocker {
     }
 
     /// Handles lockedin:// actions from the block page:
-    /// lockedin://pass?domain=x&back=url grants a 2-min pass and restores the
-    /// tab; lockedin://close closes the block-page tab ("Stay locked in").
+    /// lockedin://pass?domain=x&back=url&b=browser grants a 2-min pass and
+    /// restores the tab; lockedin://close?b=browser closes the block-page tab
+    /// ("Stay locked in"). The `b` param names the browser that showed the
+    /// page — the frontmost app can be LockedIn itself while the URL opens.
     func handleURL(_ url: URL) {
-        guard url.scheme == "lockedin" else { return }
+        guard url.scheme == "lockedin",
+              let components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+        else { return }
         let action = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+        let browser = components.queryItems?.first(where: { $0.name == "b" })?.value
 
         switch action {
         case "pass":
-            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-                  let domain = components.queryItems?.first(where: { $0.name == "domain" })?.value
+            guard let domain = components.queryItems?.first(where: { $0.name == "domain" })?.value
             else { return }
 
             PassCenter.shared.grant(kind: .domain(domain), name: domain)
@@ -166,14 +171,14 @@ final class BrowserBlocker {
             // Send the tab back where it was going.
             if let back = components.queryItems?.first(where: { $0.name == "back" })?.value,
                let backURL = URL(string: back) {
-                runInFrontmostBrowser(
+                runInBrowser(browser,
                     safari: "set URL of current tab of front window to \"\(backURL.absoluteString)\"",
                     chromium: "set URL of active tab of front window to \"\(backURL.absoluteString)\""
                 )
             }
 
         case "close":
-            runInFrontmostBrowser(
+            runInBrowser(browser,
                 safari: "close current tab of front window",
                 chromium: "close active tab of front window"
             )
@@ -183,10 +188,14 @@ final class BrowserBlocker {
         }
     }
 
-    private func runInFrontmostBrowser(safari: String, chromium: String) {
-        guard let frontmost = NSWorkspace.shared.frontmostApplication,
-              let bundleID = frontmost.bundleIdentifier?.lowercased(),
-              let engine = Self.browsers[bundleID] else { return }
+    /// Runs a tab command in the named browser, falling back to the frontmost
+    /// app when the block page predates the `b` param.
+    private func runInBrowser(_ preferredBundleID: String?, safari: String, chromium: String) {
+        var bundleID = preferredBundleID?.lowercased()
+        if bundleID == nil || Self.browsers[bundleID!] == nil {
+            bundleID = NSWorkspace.shared.frontmostApplication?.bundleIdentifier?.lowercased()
+        }
+        guard let bundleID, let engine = Self.browsers[bundleID] else { return }
         let body = engine == .safari ? safari : chromium
         Task { @MainActor in
             try? await AppleScriptHelper.executeVoid("tell application id \"\(bundleID)\" to \(body)")
