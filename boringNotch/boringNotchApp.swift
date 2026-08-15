@@ -284,7 +284,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
     func application(_ application: NSApplication, open urls: [URL]) {
         for url in urls {
-            BrowserBlocker.shared.handlePassURL(url)
+            BrowserBlocker.shared.handleURL(url)
         }
     }
 

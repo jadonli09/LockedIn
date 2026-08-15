@@ -97,3 +97,10 @@
 - Session arc/glow now spans the island's actual rendered width via GeometryReader (was pinned to notch width, so it floated centered once the island widened for the numeral — operator screenshot confirmed).
 - Browser table extended: Comet (ai.perplexity.comet), Opera, Brave, Vivaldi, Dia — all verified/known to ship the standard Chromium scripting dictionary (checked via sdef for the installed ones).
 - scripts/lockedin CLI: start | stop | restart | build (build also re-signs and relaunches).
+
+## 2026-08-15 — Iteration 4
+- Removed the accent glow/arc from the collapsed island entirely (operator call — it fought the aesthetic on both displays). Idle island is now pure black; session state = numeral only. FocusIdleUnderlay deleted.
+- Numeral clearance widened decisively: center cover = notchWidth+24 (12pt margin per side), side slots 44pt. Bottom-edge "not flush" report was most plausibly the glow bloom bleeding below the shape — gone with the glow.
+- Hello plays every launch (previous iteration) — kept.
+- Block overlay redesigned: covers ONLY the blocked app's windows (CGWindowList bounds by owner PID — no permissions), NSVisualEffectView behind-window blur + black 0.55 tint, app name in caps, live countdown, primary "Stay locked in" pill = graceful app.terminate() + return to previous app, quiet 2-min pass. Watchdog now repositions panels as windows move, hides the overlay when the blocked app loses frontmost, re-covers on reactivation. Compact layout for windows under 420pt tall. Full-screen fallback when no window bounds exist.
+- Block page redesigned: live JS countdown from a deadline param (until, ms epoch), breathing amber halo, domain label in caps, primary "Stay locked in" button → lockedin://close which AppleScripts the tab closed; pass link unchanged. handlePassURL generalized to handleURL (pass|close).

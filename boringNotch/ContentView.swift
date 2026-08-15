@@ -75,12 +75,6 @@ struct ContentView: View {
                             .padding(.horizontal, topCornerRadius)
                     }
                     .overlay {
-                        if vm.notchState == .closed, !coordinator.helloAnimationRunning,
-                           vm.effectiveClosedNotchHeight > 0 {
-                            FocusIdleUnderlay()
-                        }
-                    }
-                    .overlay {
                         currentNotchShape
                             .stroke(accent.color, lineWidth: 2)
                             .blur(radius: 1.5)

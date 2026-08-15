@@ -2,40 +2,66 @@
 //  BlockOverlayView.swift
 //  boringNotch
 //
-//  The full-screen block screen: black, remaining time, one quiet way back
-//  to work and one visually quieter 2-minute pass. No shame, no red.
+//  The block screen: covers the blocked app's own windows (not the whole
+//  screen) with a blur + dark tint. One primary action closes the app, one
+//  visually quiet action grants the 2-minute pass. No shame, no red.
 //
 
 import SwiftUI
+
+struct VisualEffectBlur: NSViewRepresentable {
+    var material: NSVisualEffectView.Material = .fullScreenUI
+
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = material
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {
+        view.material = material
+    }
+}
 
 struct BlockOverlayView: View {
     @ObservedObject var focus = FocusSessionManager.shared
 
     let appName: String
-    let onBackToWork: () -> Void
+    /// Compact layout for small windows.
+    let compact: Bool
+    let onCloseApp: () -> Void
     let onPass: () -> Void
 
     var body: some View {
         ZStack {
-            Color.black.ignoresSafeArea()
+            VisualEffectBlur()
+            Color.black.opacity(0.55)
 
-            VStack(spacing: 28) {
+            VStack(spacing: compact ? 14 : 22) {
+                Text(appName.uppercased())
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .kerning(1.4)
+                    .foregroundStyle(.white.opacity(0.4))
+
                 Text("Locked in — \(focus.remainingTimeText) left")
-                    .font(.system(size: 34, weight: .semibold, design: .rounded))
+                    .font(.system(size: compact ? 20 : 28, weight: .semibold, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(.white)
                     .contentTransition(.numericText(countsDown: true))
                     .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.remainingTimeText)
 
-                Button(action: onBackToWork) {
-                    Text("Back to work")
-                        .font(.system(size: 15, weight: .medium, design: .rounded))
+                Button(action: onCloseApp) {
+                    Text("Stay locked in")
+                        .font(.system(size: 14, weight: .medium, design: .rounded))
                         .foregroundStyle(.black.opacity(0.85))
-                        .padding(.horizontal, 22)
-                        .padding(.vertical, 10)
-                        .background(Capsule().fill(.white.opacity(0.9)))
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 9)
+                        .background(Capsule().fill(.white.opacity(0.92)))
                 }
                 .buttonStyle(.plain)
+                .help("Closes \(appName)")
 
                 Button(action: onPass) {
                     Text("2-min pass")
@@ -43,57 +69,84 @@ struct BlockOverlayView: View {
                         .foregroundStyle(.white.opacity(0.35))
                 }
                 .buttonStyle(.plain)
-                .padding(.top, 12)
+                .padding(.top, compact ? 0 : 6)
             }
+            .padding(24)
         }
+        .ignoresSafeArea()
     }
 }
 
-/// Borderless full-screen window that hosts the block screen.
+/// Borderless panels that sit exactly over the blocked app's windows.
 @MainActor
 final class BlockOverlayController {
-    private var window: NSWindow?
+    private var panels: [NSPanel] = []
 
-    var isVisible: Bool { window?.isVisible ?? false }
+    var isVisible: Bool { panels.contains { $0.isVisible } }
 
-    func show(appName: String, fadeIn: TimeInterval = 0, onBackToWork: @escaping () -> Void, onPass: @escaping () -> Void) {
+    func show(
+        covering rects: [CGRect],
+        appName: String,
+        fadeIn: TimeInterval = 0,
+        onCloseApp: @escaping () -> Void,
+        onPass: @escaping () -> Void
+    ) {
         hide()
 
-        guard let screen = NSScreen.main else { return }
-        let window = NSPanel(
-            contentRect: screen.frame,
-            styleMask: [.borderless, .nonactivatingPanel],
-            backing: .buffered,
-            defer: false
-        )
-        window.level = .screenSaver
-        window.isOpaque = true
-        window.backgroundColor = .black
-        window.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
-        window.contentView = NSHostingView(
-            rootView: BlockOverlayView(appName: appName, onBackToWork: onBackToWork, onPass: onPass)
-        )
-        window.isReleasedWhenClosed = false
+        // No window bounds (e.g. everything minimized): cover the main screen.
+        let targets = rects.isEmpty ? [NSScreen.main?.frame].compactMap { $0 } : rects
 
-        if fadeIn > 0 {
-            // The 3s fade back in *is* the relock warning.
-            window.alphaValue = 0
-            window.orderFrontRegardless()
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = fadeIn
-                window.animator().alphaValue = 1
+        for rect in targets {
+            let panel = NSPanel(
+                contentRect: rect,
+                styleMask: [.borderless, .nonactivatingPanel],
+                backing: .buffered,
+                defer: false
+            )
+            panel.level = .screenSaver
+            panel.isOpaque = false
+            panel.backgroundColor = .clear
+            panel.hasShadow = false
+            panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary]
+            panel.isReleasedWhenClosed = false
+            panel.contentView = NSHostingView(
+                rootView: BlockOverlayView(
+                    appName: appName,
+                    compact: rect.height < 420,
+                    onCloseApp: onCloseApp,
+                    onPass: onPass
+                )
+            )
+
+            if fadeIn > 0 {
+                // The slow fade back in *is* the relock warning.
+                panel.alphaValue = 0
+                panel.orderFrontRegardless()
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = fadeIn
+                    panel.animator().alphaValue = 1
+                }
+            } else {
+                panel.alphaValue = 1
+                panel.orderFrontRegardless()
             }
-        } else {
-            window.alphaValue = 1
-            window.orderFrontRegardless()
+            panels.append(panel)
         }
+    }
 
-        self.window = window
+    /// Follow the app's windows as they move or resize.
+    func reposition(to rects: [CGRect]) {
+        guard !rects.isEmpty, rects.count == panels.count else { return }
+        for (panel, rect) in zip(panels, rects) where panel.frame != rect {
+            panel.setFrame(rect, display: true)
+        }
     }
 
     func hide() {
-        window?.orderOut(nil)
-        window?.close()
-        window = nil
+        for panel in panels {
+            panel.orderOut(nil)
+            panel.close()
+        }
+        panels = []
     }
 }

@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <title>Locked in</title>
 <style>
+  :root { --accent: #E8A87C; }
   html, body {
     margin: 0;
     height: 100%;
@@ -13,40 +14,97 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    overflow: hidden;
   }
   body.relock { animation: fadein 3s ease-out; }
   @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
-  .stack { text-align: center; }
+
+  /* A slow ambient breath of the accent, very dim — presence, not decoration. */
+  .halo {
+    position: fixed;
+    inset: -40vh -40vw;
+    background: radial-gradient(ellipse at center, rgba(232, 168, 124, 0.07), transparent 55%);
+    animation: breathe 9s ease-in-out infinite;
+    pointer-events: none;
+  }
+  @keyframes breathe {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+
+  .stack { text-align: center; position: relative; }
+  .domain {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, 0.4);
+    margin: 0 0 18px;
+  }
   h1 {
-    font-size: 34px;
+    font-size: 40px;
     font-weight: 600;
-    margin: 0 0 28px;
+    margin: 0 0 34px;
     font-variant-numeric: tabular-nums;
   }
+  h1 .left { color: rgba(255, 255, 255, 0.92); }
+  a.primary {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.92);
+    color: rgba(0, 0, 0, 0.85);
+    font-size: 15px;
+    font-weight: 500;
+    padding: 10px 24px;
+    border-radius: 999px;
+    text-decoration: none;
+  }
+  a.primary:active { transform: scale(0.97); }
+  .quiet-row { margin-top: 22px; }
   a.pass {
-    color: rgba(255, 255, 255, 0.35);
+    color: rgba(255, 255, 255, 0.32);
     font-size: 12px;
     text-decoration: none;
   }
 </style>
 </head>
 <body>
+<div class="halo"></div>
 <div class="stack">
-  <h1 id="title">Locked in</h1>
-  <a class="pass" id="pass" href="#" hidden>2-min pass</a>
+  <p class="domain" id="domain-label"></p>
+  <h1><span class="left" id="title">Locked in</span></h1>
+  <a class="primary" href="lockedin://close">Stay locked in</a>
+  <div class="quiet-row">
+    <a class="pass" id="pass" href="#" hidden>2-min pass</a>
+  </div>
 </div>
 <script>
   const params = new URLSearchParams(location.search);
-  const left = params.get("left");
-  document.getElementById("title").textContent = left ? `Locked in — ${left} left` : "Locked in";
   if (params.get("relock") === "1") document.body.classList.add("relock");
+
   const domain = params.get("domain");
   if (domain) {
+    document.getElementById("domain-label").textContent = domain;
     const pass = document.getElementById("pass");
     pass.hidden = false;
     pass.href = "lockedin://pass?domain=" + encodeURIComponent(domain)
       + "&back=" + encodeURIComponent(params.get("back") || ("https://" + domain));
   }
+
+  // Live countdown: `until` is the phase deadline in ms since epoch.
+  const title = document.getElementById("title");
+  const until = parseInt(params.get("until") || "0", 10);
+  function render() {
+    if (!until) {
+      title.textContent = "Locked in";
+      return;
+    }
+    const secs = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+    const m = String(Math.floor(secs / 60)).padStart(2, "0");
+    const s = String(secs % 60).padStart(2, "0");
+    title.textContent = `Locked in — ${m}:${s} left`;
+    if (secs > 0) setTimeout(render, 1000 - (Date.now() % 1000));
+  }
+  render();
 </script>
 </body>
 </html>

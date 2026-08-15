@@ -2,11 +2,11 @@
 //  AppBlocker.swift
 //  boringNotch
 //
-//  App blocking during focus periods. Watches app activations and drops the
-//  block overlay over blocklisted apps. Never force-quits anything — blocked
-//  apps are hidden, not killed, and a watchdog re-presents the overlay if a
-//  blocked app is ever frontmost without a pass. The 2-minute pass grants
-//  exactly 120s to one app, doesn't stack, and isn't logged anywhere.
+//  App blocking during focus periods. Watches app activations and covers the
+//  blocked app's own windows with a blurred overlay. "Stay locked in" quits
+//  the app gracefully (never force-killed); a watchdog re-presents the
+//  overlay whenever a blocked app is frontmost without a pass. The 2-minute
+//  pass grants exactly 120s to one app, doesn't stack, and isn't logged.
 //
 
 import AppKit
@@ -29,13 +29,13 @@ final class AppBlocker {
     private var sessionObservers: [Any] = []
     private var watchdog: Timer?
     private var cancellables: Set<AnyCancellable> = []
-    /// The last non-blocked app, so "Back to work" has somewhere to return.
+    /// The last non-blocked app, so closing a blocked app has somewhere to return.
     private var previousApp: NSRunningApplication?
 
     private init() {}
 
     func start() {
-        // Seed the return target so "Back to work" works for the first block.
+        // Seed the return target so the first block has somewhere to go back to.
         if let frontmost = NSWorkspace.shared.frontmostApplication,
            !matcher.isBlocklisted(bundleID: frontmost.bundleIdentifier) {
             previousApp = frontmost
@@ -89,8 +89,15 @@ final class AppBlocker {
         guard let app else { return }
         if shouldBlock(app) {
             presentOverlay(for: app)
-        } else if !matcher.isBlocklisted(bundleID: app.bundleIdentifier), !overlay.isVisible {
-            previousApp = app
+        } else {
+            // Switched away from a blocked app: its windows are behind other
+            // content now, so the overlay leaves with it.
+            if overlay.isVisible {
+                overlay.hide()
+            }
+            if !matcher.isBlocklisted(bundleID: app.bundleIdentifier) {
+                previousApp = app
+            }
         }
     }
 
@@ -125,16 +132,50 @@ final class AppBlocker {
     }
 
     /// Perpetual enforcement: whenever a blocked app is frontmost without a
-    /// pass — including right after the pass expires or after the overlay was
-    /// dismissed in place — the overlay comes back. Pass-expiry relock arrives
-    /// with the 3s fade warning.
+    /// pass — including right after the pass expires — the overlay comes back,
+    /// tracking the app's windows as they move. Pass-expiry relock arrives
+    /// with the 3s fade warning. When the blocked app is no longer frontmost,
+    /// the overlay leaves with it.
     private func watchdogCheck() {
-        guard blockingActive, !overlay.isVisible,
-              let frontmost = NSWorkspace.shared.frontmostApplication,
-              shouldBlock(frontmost) else { return }
-        let bundleID = frontmost.bundleIdentifier?.lowercased() ?? ""
-        let expiredPass = recentlyPassed.remove(bundleID) != nil
-        presentOverlay(for: frontmost, fadeIn: expiredPass ? 3 : 0)
+        guard blockingActive else { return }
+        guard let frontmost = NSWorkspace.shared.frontmostApplication else { return }
+
+        if shouldBlock(frontmost) {
+            if overlay.isVisible {
+                overlay.reposition(to: Self.windowRects(for: frontmost))
+            } else {
+                let bundleID = frontmost.bundleIdentifier?.lowercased() ?? ""
+                let expiredPass = recentlyPassed.remove(bundleID) != nil
+                presentOverlay(for: frontmost, fadeIn: expiredPass ? 3 : 0)
+            }
+        } else if overlay.isVisible {
+            overlay.hide()
+        }
+    }
+
+    /// On-screen window bounds of the app, in Cocoa screen coordinates.
+    /// CGWindowList exposes bounds + owner PID without any permissions.
+    static func windowRects(for app: NSRunningApplication) -> [CGRect] {
+        guard let info = CGWindowListCopyWindowInfo(
+            [.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID
+        ) as? [[String: Any]] else { return [] }
+
+        let primaryHeight = NSScreen.screens.first?.frame.height ?? 0
+        return info.compactMap { entry in
+            guard entry[kCGWindowOwnerPID as String] as? pid_t == app.processIdentifier,
+                  (entry[kCGWindowLayer as String] as? Int) == 0,
+                  let boundsDict = entry[kCGWindowBounds as String] as? [String: Any],
+                  let bounds = CGRect(dictionaryRepresentation: boundsDict as CFDictionary),
+                  bounds.width > 120, bounds.height > 80
+            else { return nil }
+            // CG windows use a top-left origin; Cocoa panels use bottom-left.
+            return CGRect(
+                x: bounds.minX,
+                y: primaryHeight - bounds.maxY,
+                width: bounds.width,
+                height: bounds.height
+            )
+        }
     }
 
     /// Bundle ids whose pass ran out this session — used to pick the fade-in
@@ -143,18 +184,23 @@ final class AppBlocker {
 
     private func presentOverlay(for app: NSRunningApplication, fadeIn: TimeInterval = 0) {
         let name = app.localizedName ?? app.bundleIdentifier ?? "this app"
-        overlay.show(appName: name, fadeIn: fadeIn) { [weak self] in
-            self?.backToWork(hiding: app)
+        overlay.show(
+            covering: Self.windowRects(for: app),
+            appName: name,
+            fadeIn: fadeIn
+        ) { [weak self] in
+            self?.stayLockedIn(closing: app)
         } onPass: { [weak self] in
             self?.grantPass(to: app)
         }
     }
 
-    /// Hide the blocked app (never quit it) so it can't be used behind the
-    /// dismissed overlay; reactivating it later re-triggers the block.
-    private func backToWork(hiding app: NSRunningApplication) {
+    /// "Stay locked in": gracefully quits the blocked app (a save dialog may
+    /// keep it alive — the watchdog re-blocks in that case) and returns to
+    /// the last non-blocked app.
+    private func stayLockedIn(closing app: NSRunningApplication) {
         overlay.hide()
-        app.hide()
+        app.terminate()
         if let previousApp, previousApp != app {
             previousApp.activate()
         }

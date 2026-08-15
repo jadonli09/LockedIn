@@ -107,8 +107,9 @@ final class BrowserBlocker {
     private func redirect(bundleID: String, engine: Engine, from original: URL, domain: String, relock: Bool) async {
         guard var components = Bundle.main.url(forResource: "lockedin", withExtension: "html")
             .flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else { return }
+        let deadlineMillis = Int(Date().addingTimeInterval(FocusSessionManager.shared.remaining).timeIntervalSince1970 * 1000)
         components.queryItems = [
-            URLQueryItem(name: "left", value: FocusSessionManager.shared.remainingTimeText),
+            URLQueryItem(name: "until", value: String(deadlineMillis)),
             URLQueryItem(name: "domain", value: domain),
             URLQueryItem(name: "back", value: original.absoluteString),
             URLQueryItem(name: "relock", value: relock ? "1" : "0"),
@@ -124,31 +125,49 @@ final class BrowserBlocker {
         try? await AppleScriptHelper.executeVoid(setScript)
     }
 
-    /// Handles lockedin://pass?domain=x&back=url from the block page.
-    func handlePassURL(_ url: URL) {
-        guard url.scheme == "lockedin", url.host == "pass" || url.path == "pass",
-              let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              let domain = components.queryItems?.first(where: { $0.name == "domain" })?.value
-        else { return }
+    /// Handles lockedin:// actions from the block page:
+    /// lockedin://pass?domain=x&back=url grants a 2-min pass and restores the
+    /// tab; lockedin://close closes the block-page tab ("Stay locked in").
+    func handleURL(_ url: URL) {
+        guard url.scheme == "lockedin" else { return }
+        let action = url.host ?? url.path.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
 
-        PassCenter.shared.grant(kind: .domain(domain), name: domain)
-        recentlyPassed.insert(domain)
+        switch action {
+        case "pass":
+            guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
+                  let domain = components.queryItems?.first(where: { $0.name == "domain" })?.value
+            else { return }
 
-        // Send the tab back where it was going.
-        if let back = components.queryItems?.first(where: { $0.name == "back" })?.value,
-           let backURL = URL(string: back),
-           let frontmost = NSWorkspace.shared.frontmostApplication,
-           let bundleID = frontmost.bundleIdentifier?.lowercased(),
-           let engine = Self.browsers[bundleID] {
-            Task { @MainActor in
-                let script = switch engine {
-                case .safari:
-                    "tell application id \"\(bundleID)\" to set URL of current tab of front window to \"\(backURL.absoluteString)\""
-                case .chromium:
-                    "tell application id \"\(bundleID)\" to set URL of active tab of front window to \"\(backURL.absoluteString)\""
-                }
-                try? await AppleScriptHelper.executeVoid(script)
+            PassCenter.shared.grant(kind: .domain(domain), name: domain)
+            recentlyPassed.insert(domain)
+
+            // Send the tab back where it was going.
+            if let back = components.queryItems?.first(where: { $0.name == "back" })?.value,
+               let backURL = URL(string: back) {
+                runInFrontmostBrowser(
+                    safari: "set URL of current tab of front window to \"\(backURL.absoluteString)\"",
+                    chromium: "set URL of active tab of front window to \"\(backURL.absoluteString)\""
+                )
             }
+
+        case "close":
+            runInFrontmostBrowser(
+                safari: "close current tab of front window",
+                chromium: "close active tab of front window"
+            )
+
+        default:
+            break
+        }
+    }
+
+    private func runInFrontmostBrowser(safari: String, chromium: String) {
+        guard let frontmost = NSWorkspace.shared.frontmostApplication,
+              let bundleID = frontmost.bundleIdentifier?.lowercased(),
+              let engine = Self.browsers[bundleID] else { return }
+        let body = engine == .safari ? safari : chromium
+        Task { @MainActor in
+            try? await AppleScriptHelper.executeVoid("tell application id \"\(bundleID)\" to \(body)")
         }
     }
 }
