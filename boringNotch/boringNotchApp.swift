@@ -258,6 +258,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                 }
         }
 
+        FocusBehaviorCoordinator.shared.start()
+
         KeyboardShortcuts.onKeyDown(for: .toggleFocusSession) {
             Task { @MainActor in
                 FocusSessionManager.shared.toggle()

@@ -28,6 +28,8 @@ final class FocusSessionManager: ObservableObject {
     @Published private(set) var endPulse: Int = 0
     /// True during the 3s grace animation between phases.
     @Published private(set) var inGrace: Bool = false
+    /// Set when the pause came from the idle monitor, so input can auto-resume.
+    private(set) var pausedAutomatically: Bool = false
 
     private var ticker: AnyCancellable?
     private var graceTask: Task<Void, Never>?
@@ -70,7 +72,19 @@ final class FocusSessionManager: ObservableObject {
 
     func pause() {
         guard var s = state, !s.isPaused else { return }
+        pausedAutomatically = false
         s.pause(at: Date())
+        state = s
+        persist()
+        NotificationCenter.default.post(name: .focusPhaseDidChange, object: nil)
+    }
+
+    /// Idle auto-pause. Backdates the pause by the idle interval so idle time
+    /// never counts toward the session — 25 minutes means 25 attended minutes.
+    func autoPause(idleFor idleSeconds: TimeInterval) {
+        guard var s = state, !s.isPaused else { return }
+        pausedAutomatically = true
+        s.pause(at: Date().addingTimeInterval(-idleSeconds))
         state = s
         persist()
         NotificationCenter.default.post(name: .focusPhaseDidChange, object: nil)
@@ -78,6 +92,7 @@ final class FocusSessionManager: ObservableObject {
 
     func resume() {
         guard var s = state, s.isPaused else { return }
+        pausedAutomatically = false
         s.resume(at: Date())
         state = s
         persist()

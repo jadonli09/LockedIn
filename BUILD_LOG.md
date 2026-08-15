@@ -32,3 +32,10 @@
 - Verified end-to-end: injected 60s session with 5s left via defaults → app restored it on relaunch (persistence ✓), expired → advanced to shortBreak 300s, completedFocusCount=1 (auto-advance + grace ✓). chime.wav present in bundle.
 - Screenshots: expanded panel (25:00/READY), closed running state (amber arc draining + "25" numeral @60% white right of notch).
 - Known: synthetic CGEvent hover doesn't trigger onHover open (tap + hotkey verified instead); hover-by-hand is a morning-checklist item. A synthetic click on the open panel's play button was swallowed by an overlapping window — hotkey path used for automation instead.
+
+## 2026-08-14 18:22 PDT — Phase 4: Invisible behaviors (18:17–18:22)
+- FocusBehaviors.swift: FocusBehaviorCoordinator (notification-driven), KeepAwakeManager (IOPMAssertion NoDisplaySleep "LockedIn focus session", focus periods only, never breaks), IdleAutoPauseMonitor (30s poll → 5min idle threshold; pause is BACKDATED by the idle interval so idle time never counts; 2s poll while auto-paused so next input resumes), FocusModeController (`shortcuts run "LockedIn Focus On"/"Off"`, silent no-op if missing).
+- Engine additions: autoPause(idleFor:) with backdated pausedAt; pausedAutomatically flag gates auto-resume.
+- Decisions: idle query uses min(secondsSinceLastEventType) over six concrete event types instead of the undocumented any-event sentinel (CGEventType(rawValue: ~0) is a failable-init crash risk); Auto-DND active only while a focus phase is actively running (off during breaks/pause — spec was ambiguous, chose minimal).
+- Live-verified with pmset -g assertions: assertion present during focus ("LockedIn focus session"), gone after ⌥⌘L pause.
+- shortcuts CLI present at /usr/bin/shortcuts; the two named Shortcuts must be created by hand (morning checklist) — runtime no-ops until then, as spec prescribes.

@@ -80,6 +80,7 @@
 		3DB99A78736E4236282D99BF /* chime.wav in Resources */ = {isa = PBXBuildFile; fileRef = 85051445F4B470F9F6FA19AD /* chime.wav */; };
 		BEB132C1EE75300D7CD6B9CC /* MarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 995E7AA8D1D610A9655003E7 /* MarqueeText.swift */; };
 		DD7AB1F8620C5FB1768F4EF9 /* FocusPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68C817527A1B90DD3BB844A /* FocusPanelView.swift */; };
+		97662BC4CD3207427A4C6CAF /* FocusBehaviors.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -183,6 +184,7 @@
 		85051445F4B470F9F6FA19AD /* chime.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = chime.wav; sourceTree = "<group>"; };
 		995E7AA8D1D610A9655003E7 /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
 		C68C817527A1B90DD3BB844A /* FocusPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusPanelView.swift; sourceTree = "<group>"; };
+		A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusBehaviors.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -360,6 +362,7 @@
 		147163B52C5D804B0068B555 /* managers */ = {
 			isa = PBXGroup;
 			children = (
+				A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */,
 				6EFA3BFE155381ACD8C10F47 /* FocusSessionManager.swift */,
 				11D58EA12E760AE100FA8377 /* ImageService.swift */,
 				112FB7342CCF16F70015238C /* NotchSpaceManager.swift */,
@@ -716,6 +719,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				97662BC4CD3207427A4C6CAF /* FocusBehaviors.swift in Sources */,
 				DD7AB1F8620C5FB1768F4EF9 /* FocusPanelView.swift in Sources */,
 				BEB132C1EE75300D7CD6B9CC /* MarqueeText.swift in Sources */,
 				09CCD99C74E8EAA745C243E7 /* FocusIdleView.swift in Sources */,
