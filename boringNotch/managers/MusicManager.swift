@@ -46,7 +46,6 @@ class MusicManager: ObservableObject {
     @Published var repeatMode: RepeatMode = .off
     @Published var volume: Double = 0.5
     @Published var volumeControlSupported: Bool = true
-    @ObservedObject var coordinator = BoringViewCoordinator.shared
     @Published var usingAppIconForArtwork: Bool = false
     @Published var currentLyrics: String = ""
     @Published var isFetchingLyrics: Bool = false
@@ -138,9 +137,11 @@ class MusicManager: ObservableObject {
             controller.playbackStatePublisher
                 .receive(on: DispatchQueue.main)
                 .sink { [weak self] state in
-                    guard let self = self,
-                          self.activeController === controller else { return }
-                    self.updateFromPlaybackState(state)
+                    MainActor.assumeIsolated {
+                        guard let self = self,
+                              self.activeController === controller else { return }
+                        self.updateFromPlaybackState(state)
+                    }
                 }
                 .store(in: &controllerCancellables)
         }
@@ -188,10 +189,6 @@ class MusicManager: ObservableObject {
                 self.isPlaying = state.isPlaying
                 self.updateIdleState(state: state.isPlaying)
             }
-
-            if state.isPlaying && !state.title.isEmpty && !state.artist.isEmpty {
-                self.updateSneakPeek()
-            }
         }
 
         // Check for changes in track metadata using last artwork change values
@@ -225,11 +222,6 @@ class MusicManager: ObservableObject {
                 self.lastArtworkArtist = state.artist
                 self.lastArtworkAlbum = state.album
                 self.lastArtworkBundleIdentifier = state.bundleIdentifier
-            }
-
-            // Only update sneak peek if there's actual content and something changed
-            if !state.title.isEmpty && !state.artist.isEmpty && state.isPlaying {
-                self.updateSneakPeek()
             }
 
             // Fetch lyrics on content change
@@ -578,16 +570,6 @@ class MusicManager: ObservableObject {
                 withAnimation(.smooth) {
                     self?.avgColor = color ?? .white
                 }
-            }
-        }
-    }
-
-    private func updateSneakPeek() {
-        if isPlaying && Defaults[.enableSneakPeek] {
-            if Defaults[.sneakPeekStyles] == .standard {
-                coordinator.toggleSneakPeek(status: true, type: .music)
-            } else {
-                coordinator.toggleExpandingView(status: true, type: .music)
             }
         }
     }
