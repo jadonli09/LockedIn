@@ -70,6 +70,8 @@ final class AppBlocker {
             }
             .store(in: &cancellables)
 
+        sessionStateChanged()
+
         #if DEBUG
         simulateBlockIfRequested()
         #endif
@@ -145,7 +147,12 @@ final class AppBlocker {
         guard overlay.isVisible,
               let frontmost = NSWorkspace.shared.frontmostApplication,
               shouldBlock(frontmost) else { return }
-        overlay.reposition(to: Self.windowRects(for: frontmost))
+        let rects = Self.windowRects(for: frontmost)
+        if rects.count == overlay.panelCount {
+            overlay.reposition(to: rects)
+        } else {
+            presentOverlay(for: frontmost)
+        }
     }
 
     /// Perpetual enforcement: whenever a blocked app is frontmost without a

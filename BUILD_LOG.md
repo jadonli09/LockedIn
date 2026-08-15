@@ -111,3 +111,10 @@
 - Atmosphere: three drifting blurred aurora orbs (16–22s alternate loops; prefers-reduced-motion respected on web), app overlay keeps the behind-window blur beneath the ink tint.
 - Actions: "Stay locked in" = violet→teal gradient pill with soft violet shadow; "2-min pass" stays a whisper.
 - Verified via headless Chrome renders (entrance animation initially made captures look dim — re-rendered with virtual-time budget).
+
+## 2026-08-15 — Iteration 7: flat redesign + tracking regression fix
+- BUG: window tracking dead after app relaunch with a restored session — AppBlocker.start() never evaluated session state, so the watchdog/tracker timers only armed on a *state change*. Now calls sessionStateChanged() on start (parity with the other two blockers). Also: window-count changes mid-block (new/closed windows) re-present the overlay instead of silently refusing to reposition.
+- Aurora design retired (operator: "very AI-generated" — the frontend-design skill's own calibration flags exactly that near-black+gradient look). New direction grounded in LockedIn's own identity: pure near-black field, SF Pro Rounded, single user-chosen accent, zero gradients.
+- Signature: the island itself — a notch silhouette at the page top with the amber minutes numeral tucked at its right edge, mirroring the real notch. Progress = attended-minute dots (one per phase minute, accent when attended, rows of 30) + "N OF M MINUTES ATTENDED" line — the product's core promise made visible.
+- Accent follows the user's Settings choice on both surfaces (?accent= param on the web page; Defaults on the overlay).
+- Verified via headless Chrome render.

@@ -29,6 +29,16 @@ enum FocusAccent: String, CaseIterable, Identifiable, Defaults.Serializable {
         }
     }
 
+    var hex: String {
+        switch self {
+        case .amber: "#E8A87C"
+        case .sage: "#A8C09A"
+        case .mist: "#8FB8C9"
+        case .lavender: "#B5A8D4"
+        case .rose: "#D9A5B3"
+        }
+    }
+
     var color: Color {
         switch self {
         case .amber: Color(red: 0xE8 / 255, green: 0xA8 / 255, blue: 0x7C / 255) // #E8A87C

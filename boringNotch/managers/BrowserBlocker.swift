@@ -131,6 +131,7 @@ final class BrowserBlocker {
         components.queryItems = [
             URLQueryItem(name: "until", value: String(deadlineMillis)),
             URLQueryItem(name: "duration", value: String(durationSeconds)),
+            URLQueryItem(name: "accent", value: Defaults[.focusAccent].hex),
             URLQueryItem(name: "domain", value: domain),
             URLQueryItem(name: "back", value: original.absoluteString),
             URLQueryItem(name: "relock", value: relock ? "1" : "0"),
