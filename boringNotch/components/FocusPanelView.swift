@@ -15,7 +15,9 @@ import SwiftUI
 struct FocusPanelView: View {
     @ObservedObject var focus = FocusSessionManager.shared
     @ObservedObject var music = MusicManager.shared
+    @ObservedObject var sound = FocusSoundManager.shared
     @Default(.lastFocusPreset) var lastPreset
+    @Default(.focusSoundVolume) var soundVolume
 
     @State private var holdProgress: CGFloat = 0
     @State private var isHolding = false
@@ -124,9 +126,32 @@ struct FocusPanelView: View {
 
     private var rightColumn: some View {
         HStack(spacing: 10) {
+            if sound.isPlaying {
+                Slider(value: Binding(
+                    get: { soundVolume },
+                    set: { sound.volume = $0 }
+                ), in: 0...1)
+                .controlSize(.mini)
+                .tint(.white.opacity(0.5))
+                .frame(width: 56)
+                .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .trailing)))
+            }
+
+            Button {
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
+                    sound.toggle()
+                }
+            } label: {
+                Image(systemName: "water.waves")
+                    .font(.system(size: 14, weight: .medium))
+                    .foregroundStyle(.white.opacity(sound.isPlaying ? 0.9 : 0.4))
+                    .symbolEffect(.variableColor.iterative, isActive: sound.isPlaying)
+            }
+            .buttonStyle(.plain)
+
             if music.isPlaying || !music.isPlayerIdle {
                 MarqueeText(text: music.songTitle)
-                    .frame(width: 86, height: 16)
+                    .frame(width: 78, height: 16)
 
                 Button {
                     music.playPause()

@@ -39,3 +39,10 @@
 - Decisions: idle query uses min(secondsSinceLastEventType) over six concrete event types instead of the undocumented any-event sentinel (CGEventType(rawValue: ~0) is a failable-init crash risk); Auto-DND active only while a focus phase is actively running (off during breaks/pause — spec was ambiguous, chose minimal).
 - Live-verified with pmset -g assertions: assertion present during focus ("LockedIn focus session"), gone after ⌥⌘L pause.
 - shortcuts CLI present at /usr/bin/shortcuts; the two named Shortcuts must be created by hand (morning checklist) — runtime no-ops until then, as spec prescribes.
+
+## 2026-08-14 18:26 PDT — Phase 5: Focus sounds (18:22–18:26)
+- brownnoise.wav synthesized: leaky-integrated white noise, 11.5s, 0.5s equal-power crossfade tail→head for a seamless loop, normalized. CC0-equivalent (self-generated). Rain + Café: morning TODO (no network sourcing tonight).
+- helpers/AudioPlayer.swift repurposed into LoopingSoundPlayer (AVAudioPlayer, infinite loop, 400ms fades). FocusSoundManager: toggle/start/stop, volume via Defaults, auto-duck under MusicManager.$isPlaying with resume when media stops, fade-out on session end.
+- Panel right column: wave toggle (white 0.9 active / 0.4 idle, variableColor symbol effect while playing) + mini volume slider that appears only while a sound is active.
+- Decision: "starting a session offers the last-used sound" implemented as one-tap toggle preloaded with last-used sound — no auto-play (minimal interpretation).
+- Verified by click automation: toggle on → slider appears (screenshot), audio audible; toggle off → slider region reads pure black pixels.

@@ -81,6 +81,8 @@
 		BEB132C1EE75300D7CD6B9CC /* MarqueeText.swift in Sources */ = {isa = PBXBuildFile; fileRef = 995E7AA8D1D610A9655003E7 /* MarqueeText.swift */; };
 		DD7AB1F8620C5FB1768F4EF9 /* FocusPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C68C817527A1B90DD3BB844A /* FocusPanelView.swift */; };
 		97662BC4CD3207427A4C6CAF /* FocusBehaviors.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */; };
+		BFCC2C401DD2BD18448FDA17 /* brownnoise.wav in Resources */ = {isa = PBXBuildFile; fileRef = D1E26F329760655E7206F54D /* brownnoise.wav */; };
+		EB7B8AE6DD555459008C82A2 /* FocusSoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B37CC5444115B89130DF9B /* FocusSoundManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -185,6 +187,8 @@
 		995E7AA8D1D610A9655003E7 /* MarqueeText.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarqueeText.swift; sourceTree = "<group>"; };
 		C68C817527A1B90DD3BB844A /* FocusPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusPanelView.swift; sourceTree = "<group>"; };
 		A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusBehaviors.swift; sourceTree = "<group>"; };
+		D1E26F329760655E7206F54D /* brownnoise.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = brownnoise.wav; sourceTree = "<group>"; };
+		F4B37CC5444115B89130DF9B /* FocusSoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusSoundManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -362,6 +366,7 @@
 		147163B52C5D804B0068B555 /* managers */ = {
 			isa = PBXGroup;
 			children = (
+				F4B37CC5444115B89130DF9B /* FocusSoundManager.swift */,
 				A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */,
 				6EFA3BFE155381ACD8C10F47 /* FocusSessionManager.swift */,
 				11D58EA12E760AE100FA8377 /* ImageService.swift */,
@@ -408,6 +413,7 @@
 		14CEF4142C5CAED300855D72 /* boringNotch */ = {
 			isa = PBXGroup;
 			children = (
+				D1E26F329760655E7206F54D /* brownnoise.wav */,
 				85051445F4B470F9F6FA19AD /* chime.wav */,
 				11F748672EC9AC9600F841DB /* XPCHelperClient */,
 				116398942DF5D6B40052E6AF /* Providers */,
@@ -696,6 +702,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				BFCC2C401DD2BD18448FDA17 /* brownnoise.wav in Resources */,
 				3DB99A78736E4236282D99BF /* chime.wav in Resources */,
 				14CEF41D2C5CAED400855D72 /* Preview Assets.xcassets in Resources */,
 				14CEF41A2C5CAED400855D72 /* Assets.xcassets in Resources */,
@@ -719,6 +726,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				EB7B8AE6DD555459008C82A2 /* FocusSoundManager.swift in Sources */,
 				97662BC4CD3207427A4C6CAF /* FocusBehaviors.swift in Sources */,
 				DD7AB1F8620C5FB1768F4EF9 /* FocusPanelView.swift in Sources */,
 				BEB132C1EE75300D7CD6B9CC /* MarqueeText.swift in Sources */,
