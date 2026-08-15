@@ -71,3 +71,12 @@
 - Phase 9: Settings gains custom Focus/Break length steppers (Settings-only, per spec), Shortcuts setup note + "Open Shortcuts" button; window retitled "LockedIn Settings"; CFBundleDisplayName = LockedIn (bundle id intentionally unchanged — XPC service discovery).
 - Verified visually: island context menu (Settings ⌘, / Quit LockedIn) and the full Settings window render correctly.
 - Permissions onboarding UI deliberately NOT built: every permission (Automation per-browser, Shortcuts) must be granted by a human anyway → MORNING_CHECKLIST covers it. Logged as conscious scope decision, not an omission.
+
+## 2026-08-14 18:45 PDT — Phase 7 (reserve): Stabilize + report (18:35–18:45)
+- Clean-room rebuild (deleted DerivedData): BUILD SUCCEEDED. Full test suite: 20/20 TEST SUCCEEDED.
+- 65s soak: process alive, idle CPU 0.0% over 3 top samples, zero new crash reports.
+- Warnings audit: touched every new/rewritten file, rebuilt, grepped — zero warnings introduced by new code.
+- Hold-to-end verified live (5.6s synthetic press ends session); pmset assertion present during focus, 0 after end — no leaks.
+- End-of-session pulse captured on screen (amber outline around island) + auto-advance to a fresh full break arc.
+- README rewritten for LockedIn (GPL-3.0 preserved, upstream credited). FINAL_REPORT.md + MORNING_CHECKLIST.md written.
+- Total elapsed 17:55 → 18:45 (~50 min of the 240-min budget). All Musts, all Shoulds, all Stretches shipped.
