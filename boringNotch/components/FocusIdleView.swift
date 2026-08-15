@@ -26,20 +26,25 @@ struct FocusIdleUnderlay: View {
             ZStack(alignment: .bottom) {
                 Color.clear
                 if focus.hasSession {
-                    // Remaining time, anchored at the trailing edge: the line
-                    // visibly drains from left to right as the phase elapses.
-                    Capsule()
-                        .fill(accent.color)
-                        .frame(width: max(0, span * (1 - focus.progress)), height: 2)
-                        .background(alignment: .trailing) {
-                            Capsule()
-                                .fill(accent.color)
-                                .frame(width: max(0, span * (1 - focus.progress)), height: 3)
-                                .blur(radius: 3)
-                        }
-                        .frame(width: span, alignment: .trailing)
-                        .opacity(focus.isPaused ? 0.35 : 0.9)
-                        .animation(.spring(response: 0.45, dampingFraction: 1.0), value: focus.progress)
+                    // A faint full-width track with the bright remaining
+                    // segment on top, so the bottom edge always reads as one
+                    // intentional line while the bright part drains away.
+                    ZStack(alignment: .trailing) {
+                        Capsule()
+                            .fill(accent.color.opacity(0.18))
+                            .frame(width: span, height: 2)
+                        Capsule()
+                            .fill(accent.color)
+                            .frame(width: max(0, span * (1 - focus.progress)), height: 2)
+                            .background(alignment: .trailing) {
+                                Capsule()
+                                    .fill(accent.color)
+                                    .frame(width: max(0, span * (1 - focus.progress)), height: 3)
+                                    .blur(radius: 3)
+                            }
+                    }
+                    .opacity(focus.isPaused ? 0.35 : 0.9)
+                    .animation(.spring(response: 0.45, dampingFraction: 1.0), value: focus.progress)
                 } else {
                     // Rest state: 1px line with a soft bloom beneath so it
                     // reads as a glow rather than a hairline.

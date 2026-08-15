@@ -49,6 +49,7 @@ class BoringViewCoordinator: ObservableObject {
 
         selectedScreenUUID = preferredScreenUUID ?? NSScreen.main?.displayUUID ?? ""
 
-        helloAnimationRunning = firstLaunch
+        // The hello plays on every launch — it's the app's whole greeting.
+        helloAnimationRunning = true
     }
 }
