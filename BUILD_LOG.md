@@ -46,3 +46,16 @@
 - Panel right column: wave toggle (white 0.9 active / 0.4 idle, variableColor symbol effect while playing) + mini volume slider that appears only while a sound is active.
 - Decision: "starting a session offers the last-used sound" implemented as one-tap toggle preloaded with last-used sound — no auto-play (minimal interpretation).
 - Verified by click automation: toggle on → slider appears (screenshot), audio audible; toggle off → slider region reads pure black pixels.
+
+## 2026-08-14 18:31 PDT — Phase 6: App blocker + 2-min pass (18:22–18:31)
+- BlockOverlayView + BlockOverlayController: full-screen black NSPanel at .screenSaver level, "Locked in — MM:SS left" (live), white "Back to work" pill, quiet gray "2-min pass". The 3s fade-in IS the relock warning.
+- AppBlocker: NSWorkspace.didActivateApplicationNotification (no permissions needed — Accessibility turned out unnecessary for app-level blocking); tracks last non-blocked app for "Back to work"; passes are per-item/non-stacking/unlogged; blocklist reacts live to Defaults changes; DEBUG_SIMULATE_BLOCK defaults flag for permission-free overlay simulation. BlocklistMatcher extracted to models/ (pure Foundation) for unit tests, incl. domain matcher for the browser stretch.
+- Settings: Focus section (accent picker, toggles, hotkey recorder), Blocked apps (NSOpenPanel native picker), Blocked websites (text field, normalized).
+- Fixed after live test: seed previousApp with frontmost at start; re-check frontmost when a session starts (blocked app already frontmost).
+- LIVE VERIFIED full loop with TextEdit blocklisted: overlay appears on activation (screenshot), Back to work returns to Finder, 2-min pass lifts overlay, auto-relock kicks in ~120s later (pixel-verified black overlay).
+
+## 2026-08-14 18:31 PDT — Test infrastructure (part of Phase 7 reserve, done early)
+- Project had NO test target. Created LockedInTests unit-test bundle by hand in pbxproj (synced folder group + compiles FocusModels.swift/BlocklistMatcher.swift directly, no app host, no SPM deps) + shared scheme.
+- Refactor for testability: FocusModels stripped of Defaults dependency (keys+Serializable moved to models/FocusDefaults.swift); BlocklistMatcher moved out of AppBlocker.
+- 20 tests: state machine (start/elapse/expiry/pause/resume/no-op double transitions), backdated idle-pause accounting incl. clamp, phase advancement + every-4th long break + disable, Codable persistence round-trip + relaunch-by-timestamps, matcher (case-insensitivity, 120s pass, non-stacking, per-item, clear, domain matching incl. subdomains and suffix-spoof rejection).
+- `xcodebuild -scheme LockedInTests test` → TEST SUCCEEDED, 20/20 passed.

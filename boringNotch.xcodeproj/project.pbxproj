@@ -83,6 +83,12 @@
 		97662BC4CD3207427A4C6CAF /* FocusBehaviors.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */; };
 		BFCC2C401DD2BD18448FDA17 /* brownnoise.wav in Resources */ = {isa = PBXBuildFile; fileRef = D1E26F329760655E7206F54D /* brownnoise.wav */; };
 		EB7B8AE6DD555459008C82A2 /* FocusSoundManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4B37CC5444115B89130DF9B /* FocusSoundManager.swift */; };
+		10B4F9D34B95D1C896F6E131 /* AppBlocker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AB800F27C62ADDF53F7FF7E /* AppBlocker.swift */; };
+		8E037119672CA181531DD259 /* BlockOverlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D734608B5B2EDEF8C281313D /* BlockOverlayView.swift */; };
+		8794655A8AA8C36A6CFB573D /* FocusDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C60EDDFDB435E71A3118958 /* FocusDefaults.swift */; };
+		ABC2A1BDDD704436B73437A6 /* BlocklistMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD0218F4842EEEAE35CA3F7 /* BlocklistMatcher.swift */; };
+		AA1000000000000000000009 /* FocusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = E86AFACAB39A71B0A433E5AD /* FocusModels.swift */; };
+		AA100000000000000000000A /* BlocklistMatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BD0218F4842EEEAE35CA3F7 /* BlocklistMatcher.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -189,6 +195,11 @@
 		A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusBehaviors.swift; sourceTree = "<group>"; };
 		D1E26F329760655E7206F54D /* brownnoise.wav */ = {isa = PBXFileReference; lastKnownFileType = audio.wav; path = brownnoise.wav; sourceTree = "<group>"; };
 		F4B37CC5444115B89130DF9B /* FocusSoundManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusSoundManager.swift; sourceTree = "<group>"; };
+		9AB800F27C62ADDF53F7FF7E /* AppBlocker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppBlocker.swift; sourceTree = "<group>"; };
+		D734608B5B2EDEF8C281313D /* BlockOverlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockOverlayView.swift; sourceTree = "<group>"; };
+		2C60EDDFDB435E71A3118958 /* FocusDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusDefaults.swift; sourceTree = "<group>"; };
+		9BD0218F4842EEEAE35CA3F7 /* BlocklistMatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlocklistMatcher.swift; sourceTree = "<group>"; };
+		AA1000000000000000000001 /* LockedInTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LockedInTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -204,6 +215,7 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		112FB72F2CCF12CC0015238C /* private */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = private; sourceTree = "<group>"; };
 		11F748502EC9AABA00F841DB /* BoringNotchXPCHelper */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (11F7485C2EC9AABA00F841DB /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = BoringNotchXPCHelper; sourceTree = "<group>"; };
+		AA1000000000000000000002 /* LockedInTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = LockedInTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -231,6 +243,13 @@
 				B19016222CC15B3D00E3F12E /* Defaults in Frameworks */,
 				111BE95D2ECD71E10079DD4E /* AsyncXPCConnection in Frameworks */,
 				B1628B922CC260C0003D8DF3 /* SwiftUIIntrospect in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA1000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -344,6 +363,7 @@
 		1471639B2C5D362F0068B555 /* components */ = {
 			isa = PBXGroup;
 			children = (
+				D734608B5B2EDEF8C281313D /* BlockOverlayView.swift */,
 				C68C817527A1B90DD3BB844A /* FocusPanelView.swift */,
 				995E7AA8D1D610A9655003E7 /* MarqueeText.swift */,
 				E74DFB299459F67E29ADCA6A /* FocusIdleView.swift */,
@@ -366,6 +386,7 @@
 		147163B52C5D804B0068B555 /* managers */ = {
 			isa = PBXGroup;
 			children = (
+				9AB800F27C62ADDF53F7FF7E /* AppBlocker.swift */,
 				F4B37CC5444115B89130DF9B /* FocusSoundManager.swift */,
 				A2E6ACB62172E3705FE3C26D /* FocusBehaviors.swift */,
 				6EFA3BFE155381ACD8C10F47 /* FocusSessionManager.swift */,
@@ -393,6 +414,7 @@
 		14CEF4092C5CAED200855D72 = {
 			isa = PBXGroup;
 			children = (
+				AA1000000000000000000002 /* LockedInTests */,
 				112B0EB62E30DD0F00562D6C /* mediaremote-adapter */,
 				14CEF4142C5CAED300855D72 /* boringNotch */,
 				11F748502EC9AABA00F841DB /* BoringNotchXPCHelper */,
@@ -404,6 +426,7 @@
 		14CEF4132C5CAED300855D72 /* Products */ = {
 			isa = PBXGroup;
 			children = (
+				AA1000000000000000000001 /* LockedInTests.xctest */,
 				14CEF4122C5CAED300855D72 /* boringNotch.app */,
 				11F7484F2EC9AABA00F841DB /* BoringNotchXPCHelper.xpc */,
 			);
@@ -479,6 +502,8 @@
 		14D570C72C5F38760011E668 /* models */ = {
 			isa = PBXGroup;
 			children = (
+				9BD0218F4842EEEAE35CA3F7 /* BlocklistMatcher.swift */,
+				2C60EDDFDB435E71A3118958 /* FocusDefaults.swift */,
 				E86AFACAB39A71B0A433E5AD /* FocusModels.swift */,
 				B19016232CC15B4D00E3F12E /* Constants.swift */,
 				14D570C82C5F38890011E668 /* BoringViewModel.swift */,
@@ -639,6 +664,25 @@
 			productReference = 14CEF4122C5CAED300855D72 /* boringNotch.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AA1000000000000000000003 /* LockedInTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA1000000000000000000006 /* Build configuration list for PBXNativeTarget "LockedInTests" */;
+			buildPhases = (
+				AA1000000000000000000004 /* Sources */,
+				AA1000000000000000000005 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AA1000000000000000000002 /* LockedInTests */,
+			);
+			name = LockedInTests;
+			productName = LockedInTests;
+			productReference = AA1000000000000000000001 /* LockedInTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -650,6 +694,9 @@
 				LastUpgradeCheck = 1640;
 				TargetAttributes = {
 					11F7484E2EC9AABA00F841DB = {
+						CreatedOnToolsVersion = 16.4;
+					};
+					AA1000000000000000000003 = {
 						CreatedOnToolsVersion = 16.4;
 					};
 					14CEF4112C5CAED300855D72 = {
@@ -686,6 +733,7 @@
 			targets = (
 				14CEF4112C5CAED300855D72 /* boringNotch */,
 				11F7484E2EC9AABA00F841DB /* BoringNotchXPCHelper */,
+				AA1000000000000000000003 /* LockedInTests */,
 			);
 		};
 /* End PBXProject section */
@@ -726,6 +774,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				ABC2A1BDDD704436B73437A6 /* BlocklistMatcher.swift in Sources */,
+				8794655A8AA8C36A6CFB573D /* FocusDefaults.swift in Sources */,
+				8E037119672CA181531DD259 /* BlockOverlayView.swift in Sources */,
+				10B4F9D34B95D1C896F6E131 /* AppBlocker.swift in Sources */,
 				EB7B8AE6DD555459008C82A2 /* FocusSoundManager.swift in Sources */,
 				97662BC4CD3207427A4C6CAF /* FocusBehaviors.swift in Sources */,
 				DD7AB1F8620C5FB1768F4EF9 /* FocusPanelView.swift in Sources */,
@@ -780,6 +832,15 @@
 				14288DDC2C6E015000B9F80C /* AudioPlayer.swift in Sources */,
 				14288E0C2C6F8EC000B9F80C /* AppIcons.swift in Sources */,
 				B19016242CC15B5000E3F12E /* Constants.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA1000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				AA1000000000000000000009 /* FocusModels.swift in Sources */,
+				AA100000000000000000000A /* BlocklistMatcher.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1075,6 +1136,36 @@
 			};
 			name = Release;
 		};
+		AA1000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.LockedInTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AA1000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.LockedInTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1101,6 +1192,15 @@
 			buildConfigurations = (
 				14CEF4222C5CAED400855D72 /* Debug */,
 				14CEF4232C5CAED400855D72 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA1000000000000000000006 /* Build configuration list for PBXNativeTarget "LockedInTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA1000000000000000000007 /* Debug */,
+				AA1000000000000000000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

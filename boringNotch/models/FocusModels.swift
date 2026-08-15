@@ -9,9 +9,8 @@
 //
 
 import Foundation
-import Defaults
 
-struct FocusPreset: Codable, Hashable, Identifiable, Defaults.Serializable {
+struct FocusPreset: Codable, Hashable, Identifiable {
     var focusMinutes: Int
     var breakMinutes: Int
 
@@ -46,7 +45,7 @@ enum FocusPhaseKind: String, Codable {
 /// One in-flight session phase. `phaseStart` is shifted forward on resume so
 /// that (now - phaseStart) is always *attended* elapsed time: paused and idle
 /// time never count toward the session.
-struct FocusSessionState: Codable, Defaults.Serializable {
+struct FocusSessionState: Codable {
     var preset: FocusPreset
     var phase: FocusPhaseKind
     var phaseStart: Date
@@ -125,11 +124,4 @@ struct FocusSessionState: Codable, Defaults.Serializable {
             completedFocusCount: 0
         )
     }
-}
-
-extension Defaults.Keys {
-    static let focusSessionState = Key<FocusSessionState?>("focusSessionState", default: nil)
-    static let lastFocusPreset = Key<FocusPreset>("lastFocusPreset", default: .classic)
-    static let longBreaksEnabled = Key<Bool>("longBreaksEnabled", default: true)
-    static let showRemainingMinutes = Key<Bool>("showRemainingMinutes", default: true)
 }
