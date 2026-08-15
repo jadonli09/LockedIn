@@ -26,6 +26,7 @@ struct SettingsView: View {
     @Default(.autoDNDEnabled) var autoDNDEnabled
     @Default(.blockedBundleIDs) var blockedBundleIDs
     @Default(.blockedDomains) var blockedDomains
+    @Default(.lastFocusPreset) var lastPreset
 
     @State private var newDomain: String = ""
 
@@ -54,11 +55,34 @@ struct SettingsView: View {
                         Text(accent.displayName).tag(accent)
                     }
                 }
+                Stepper(
+                    "Focus length: \(lastPreset.focusMinutes) min",
+                    value: Binding(
+                        get: { lastPreset.focusMinutes },
+                        set: { lastPreset.focusMinutes = $0 }
+                    ), in: 5...180, step: 5
+                )
+                Stepper(
+                    "Break length: \(lastPreset.breakMinutes) min",
+                    value: Binding(
+                        get: { lastPreset.breakMinutes },
+                        set: { lastPreset.breakMinutes = $0 }
+                    ), in: 1...60
+                )
                 Toggle("Remaining minutes on the island", isOn: $showRemainingMinutes)
                 Toggle("Long break every 4th cycle", isOn: $longBreaksEnabled)
                 Toggle("Pause when idle for 5 minutes", isOn: $idleAutoPauseEnabled)
                 Toggle("Enable Focus mode during sessions", isOn: $autoDNDEnabled)
                 KeyboardShortcuts.Recorder("Start / pause session", name: .toggleFocusSession)
+                LabeledContent {
+                    Button("Open Shortcuts") {
+                        NSWorkspace.shared.open(URL(string: "shortcuts://")!)
+                    }
+                } label: {
+                    Text("Auto-Focus needs two Shortcuts named “LockedIn Focus On” and “LockedIn Focus Off”, each with a Set Focus action.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
             }
 
             Section("Blocked apps") {

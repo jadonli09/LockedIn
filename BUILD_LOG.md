@@ -65,3 +65,9 @@
 - lockedin:// URL scheme registered in Info.plist (+ NSAppleEventsUsageDescription for the Automation prompt); AppDelegate application(_:open:) routes to handlePassURL, which grants the pass and AppleScripts the tab back to the original URL.
 - Block page visually verified in a browser (fallback rendering without params confirmed — `open` strips queries).
 - LIMITATION: live redirect flow needs per-browser Automation permission → morning checklist. Code is inert without it (try? everywhere), exactly as spec prescribes.
+
+## 2026-08-14 18:40 PDT — Phases 8+9 (stretch) (18:34–18:40)
+- Phase 8 (media row) was already delivered inside the expanded panel in Phases 3/5: read-only marquee title + play/pause, right side, expanded state only. Nothing more to build.
+- Phase 9: Settings gains custom Focus/Break length steppers (Settings-only, per spec), Shortcuts setup note + "Open Shortcuts" button; window retitled "LockedIn Settings"; CFBundleDisplayName = LockedIn (bundle id intentionally unchanged — XPC service discovery).
+- Verified visually: island context menu (Settings ⌘, / Quit LockedIn) and the full Settings window render correctly.
+- Permissions onboarding UI deliberately NOT built: every permission (Automation per-browser, Shortcuts) must be granted by a human anyway → MORNING_CHECKLIST covers it. Logged as conscious scope decision, not an omission.
