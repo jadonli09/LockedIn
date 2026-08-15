@@ -4,9 +4,9 @@
 //
 //  App blocking during focus periods. Watches app activations and covers the
 //  blocked app's own windows with a blurred overlay. "Stay locked in" quits
-//  the app gracefully (never force-killed); a watchdog re-presents the
-//  overlay whenever a blocked app is frontmost without a pass. The 2-minute
-//  pass grants exactly 120s to one app, doesn't stack, and isn't logged.
+//  the app (gracefully first, force after a short grace); a watchdog
+//  re-presents the overlay whenever a blocked app is frontmost without a
+//  pass. The 2-minute pass grants exactly 120s, doesn't stack, isn't logged.
 //
 
 import AppKit
@@ -28,6 +28,7 @@ final class AppBlocker {
     private var workspaceObserver: Any?
     private var sessionObservers: [Any] = []
     private var watchdog: Timer?
+    private var tracker: Timer?
     private var cancellables: Set<AnyCancellable> = []
     /// The last non-blocked app, so closing a blocked app has somewhere to return.
     private var previousApp: NSRunningApplication?
@@ -124,11 +125,27 @@ final class AppBlocker {
                 AppBlocker.shared.watchdogCheck()
             }
         }
+        // Separate fast timer purely for window tracking, so dragging a
+        // blocked window doesn't leave the blur behind.
+        tracker = Timer.scheduledTimer(withTimeInterval: 0.12, repeats: true) { _ in
+            Task { @MainActor in
+                AppBlocker.shared.trackWindows()
+            }
+        }
     }
 
     private func stopWatchdog() {
         watchdog?.invalidate()
         watchdog = nil
+        tracker?.invalidate()
+        tracker = nil
+    }
+
+    private func trackWindows() {
+        guard overlay.isVisible,
+              let frontmost = NSWorkspace.shared.frontmostApplication,
+              shouldBlock(frontmost) else { return }
+        overlay.reposition(to: Self.windowRects(for: frontmost))
     }
 
     /// Perpetual enforcement: whenever a blocked app is frontmost without a
@@ -169,11 +186,13 @@ final class AppBlocker {
                   bounds.width > 120, bounds.height > 80
             else { return nil }
             // CG windows use a top-left origin; Cocoa panels use bottom-left.
+            // Leave the title bar uncovered so the window can still be moved.
+            let titleBarClearance: CGFloat = 30
             return CGRect(
                 x: bounds.minX,
                 y: primaryHeight - bounds.maxY,
                 width: bounds.width,
-                height: bounds.height
+                height: max(0, bounds.height - titleBarClearance)
             )
         }
     }
@@ -195,14 +214,21 @@ final class AppBlocker {
         }
     }
 
-    /// "Stay locked in": gracefully quits the blocked app (a save dialog may
-    /// keep it alive — the watchdog re-blocks in that case) and returns to
-    /// the last non-blocked app.
+    /// "Stay locked in": hides the app instantly, asks it to quit gracefully,
+    /// and force-quits if it's still alive after 2.5s (a graceful quit is an
+    /// Apple event, which unauthorized apps silently swallow).
     private func stayLockedIn(closing app: NSRunningApplication) {
         overlay.hide()
-        app.terminate()
+        app.hide()
         if let previousApp, previousApp != app {
             previousApp.activate()
+        }
+        app.terminate()
+        Task {
+            try? await Task.sleep(for: .seconds(2.5))
+            if !app.isTerminated {
+                app.forceTerminate()
+            }
         }
     }
 

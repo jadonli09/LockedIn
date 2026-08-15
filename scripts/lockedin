@@ -24,7 +24,7 @@ case "${1:-restart}" in
     xcodebuild -scheme boringNotch -configuration Debug build \
       -derivedDataPath build/DerivedData \
       CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO | tail -2
-    codesign --force --deep -s - "$APP"
+    codesign --force --deep -s "LockedIn Dev" "$APP"
     osascript -e 'quit app "boringNotch"' 2>/dev/null || true
     sleep 1
     open "$APP"

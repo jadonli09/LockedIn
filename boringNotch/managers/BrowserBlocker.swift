@@ -36,8 +36,9 @@ final class BrowserBlocker {
     ]
 
     private var poller: Timer?
+    private var didPrimePermissions = false
     private var observers: [Any] = []
-    private var checkInFlight = false
+    private var checkStartedAt: Date?
     /// Domains whose pass ran out this session — relock gets the 3s fade.
     private var recentlyPassed: Set<String> = []
 
@@ -61,7 +62,24 @@ final class BrowserBlocker {
         return focus.isRunning && focus.isFocusPhase
     }
 
+    /// Fires a harmless query at every *running* browser from the table so
+    /// macOS surfaces the per-browser Automation prompts at a deliberate
+    /// moment (session start) instead of mid-poll where they can hang unseen.
+    private func primePermissionsIfNeeded() {
+        guard !didPrimePermissions else { return }
+        didPrimePermissions = true
+        let running = Set(NSWorkspace.shared.runningApplications.compactMap { $0.bundleIdentifier?.lowercased() })
+        for bundleID in Self.browsers.keys where running.contains(bundleID) {
+            Task { @MainActor in
+                try? await AppleScriptHelper.executeVoid("tell application id \"\(bundleID)\" to count windows")
+            }
+        }
+    }
+
     private func sessionStateChanged() {
+        if blockingActive {
+            primePermissionsIfNeeded()
+        }
         if blockingActive, poller == nil {
             let timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { _ in
                 Task { @MainActor in
@@ -76,12 +94,13 @@ final class BrowserBlocker {
     }
 
     private func checkActiveTab() async {
-        guard !checkInFlight, blockingActive else { return }
+        if let started = checkStartedAt, Date().timeIntervalSince(started) < 6 { return }
+        guard blockingActive else { return }
         guard let frontmost = NSWorkspace.shared.frontmostApplication,
               let bundleID = frontmost.bundleIdentifier?.lowercased(),
               let engine = Self.browsers[bundleID] else { return }
-        checkInFlight = true
-        defer { checkInFlight = false }
+        checkStartedAt = Date()
+        defer { checkStartedAt = nil }
 
         let urlScript = switch engine {
         case .safari:
