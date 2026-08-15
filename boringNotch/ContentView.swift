@@ -14,6 +14,9 @@ import SwiftUI
 struct ContentView: View {
     @EnvironmentObject var vm: BoringViewModel
     @ObservedObject var coordinator = BoringViewCoordinator.shared
+    @ObservedObject var focus = FocusSessionManager.shared
+    @Default(.focusAccent) var accent
+    @Default(.showRemainingMinutes) var showRemainingMinutes
 
     @State private var hoverTask: Task<Void, Never>?
     @State private var isHovering: Bool = false
@@ -21,6 +24,7 @@ struct ContentView: View {
     @State private var gestureProgress: CGFloat = .zero
 
     @State private var haptics: Bool = false
+    @State private var pulseOpacity: Double = 0
 
     // Shared interactive spring for movement/resizing to avoid conflicting animations
     private let animationSpring = Animation.interactiveSpring(response: 0.38, dampingFraction: 0.8, blendDuration: 0)
@@ -68,6 +72,19 @@ struct ContentView: View {
                             .frame(height: 1)
                             .padding(.horizontal, topCornerRadius)
                     }
+                    .overlay(alignment: .bottom) {
+                        if vm.notchState == .closed, !coordinator.helloAnimationRunning,
+                           vm.effectiveClosedNotchHeight > 0 {
+                            FocusIdleUnderlay(notchWidth: vm.closedNotchSize.width)
+                        }
+                    }
+                    .overlay {
+                        currentNotchShape
+                            .stroke(accent.color, lineWidth: 2)
+                            .blur(radius: 1.5)
+                            .opacity(pulseOpacity)
+                            .allowsHitTesting(false)
+                    }
                     .shadow(
                         color: ((vm.notchState == .open || isHovering) && Defaults[.enableShadow])
                             ? .black.opacity(0.7) : .clear, radius: Defaults[.cornerRadiusScaling] ? 6 : 4
@@ -111,6 +128,12 @@ struct ContentView: View {
                             withAnimation {
                                 isHovering = false
                             }
+                        }
+                    }
+                    .onChange(of: focus.endPulse) { _, _ in
+                        pulseOpacity = 0.85
+                        withAnimation(.easeOut(duration: 0.5)) {
+                            pulseOpacity = 0
                         }
                     }
                     .sensoryFeedback(.alignment, trigger: haptics)
@@ -162,6 +185,11 @@ struct ContentView: View {
                     Spacer()
                 } else if vm.notchState == .open {
                     Rectangle().fill(.clear).frame(width: vm.closedNotchSize.width - 20, height: max(24, vm.effectiveClosedNotchHeight))
+                } else if focus.hasSession && showRemainingMinutes && !vm.hideOnClosed {
+                    FocusClosedContent(
+                        notchWidth: vm.closedNotchSize.width,
+                        notchHeight: vm.effectiveClosedNotchHeight
+                    )
                 } else {
                     Rectangle().fill(.clear).frame(width: vm.closedNotchSize.width - 20, height: vm.effectiveClosedNotchHeight)
                 }

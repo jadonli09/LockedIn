@@ -2,50 +2,50 @@
 //  Color+AccentColor.swift
 //  boringNotch
 //
-//  Created by Alexander on 2025-10-24.
+//  LockedIn accent system: exactly one accent color, picked from 5 curated
+//  options. The accent appears only in the idle glow, the session arc, and
+//  the end-of-session pulse — nowhere else.
 //
 
 import SwiftUI
 import Defaults
 
-extension Color {
-    static var effectiveAccent: Color {
-        if Defaults[.useCustomAccentColor],
-           let colorData = Defaults[.customAccentColorData],
-           let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
-            return Color(nsColor: nsColor)
+enum FocusAccent: String, CaseIterable, Identifiable, Defaults.Serializable {
+    case amber
+    case sage
+    case mist
+    case lavender
+    case rose
+
+    var id: String { rawValue }
+
+    var displayName: String {
+        switch self {
+        case .amber: "Amber"
+        case .sage: "Sage"
+        case .mist: "Mist"
+        case .lavender: "Lavender"
+        case .rose: "Rose"
         }
-        return .accentColor
     }
-    
-    /// Returns a darker version of the accent color suitable for backgrounds
-    static var effectiveAccentBackground: Color {
-        if Defaults[.useCustomAccentColor],
-           let colorData = Defaults[.customAccentColorData],
-           let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
-            return Color(nsColor: nsColor.withSystemEffect(.disabled))
+
+    var color: Color {
+        switch self {
+        case .amber: Color(red: 0xE8 / 255, green: 0xA8 / 255, blue: 0x7C / 255) // #E8A87C
+        case .sage: Color(red: 0xA8 / 255, green: 0xC0 / 255, blue: 0x9A / 255) // #A8C09A
+        case .mist: Color(red: 0x8F / 255, green: 0xB8 / 255, blue: 0xC9 / 255) // #8FB8C9
+        case .lavender: Color(red: 0xB5 / 255, green: 0xA8 / 255, blue: 0xD4 / 255) // #B5A8D4
+        case .rose: Color(red: 0xD9 / 255, green: 0xA5 / 255, blue: 0xB3 / 255) // #D9A5B3
         }
-        return Color.effectiveAccent.opacity(0.25)
     }
 }
 
-extension NSColor {
-    static var effectiveAccent: NSColor {
-        if Defaults[.useCustomAccentColor],
-           let colorData = Defaults[.customAccentColorData],
-           let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
-            return nsColor
-        }
-        return NSColor.controlAccentColor
-    }
-    
-    /// Returns a darker version of the accent color as NSColor suitable for backgrounds
-    static var effectiveAccentBackground: NSColor {
-        if Defaults[.useCustomAccentColor],
-           let colorData = Defaults[.customAccentColorData],
-           let nsColor = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSColor.self, from: colorData) {
-            return nsColor.withSystemEffect(.disabled)
-        }
-        return NSColor.controlAccentColor.withAlphaComponent(0.25)
+extension Defaults.Keys {
+    static let focusAccent = Key<FocusAccent>("focusAccent", default: .amber)
+}
+
+extension Color {
+    static var focusAccent: Color {
+        Defaults[.focusAccent].color
     }
 }
