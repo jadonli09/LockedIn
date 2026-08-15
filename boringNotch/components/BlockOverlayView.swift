@@ -2,12 +2,30 @@
 //  BlockOverlayView.swift
 //  boringNotch
 //
-//  The block screen: covers the blocked app's own windows (not the whole
-//  screen) with a blur + dark tint. One primary action closes the app, one
-//  visually quiet action grants the 2-minute pass. No shame, no red.
+//  The block screen, aurora edition: covers the blocked app's own windows
+//  with a blur + violet-ink tint, drifting aurora orbs, and a session ring
+//  that fills with an aurora gradient as the session elapses — staying is
+//  the rewarding path. One gradient action closes the app; one quiet action
+//  grants the 2-minute pass. No shame, no red.
 //
 
 import SwiftUI
+
+enum Aurora {
+    static let ink = Color(red: 0x0A / 255, green: 0x08 / 255, blue: 0x12 / 255)
+    static let violet = Color(red: 0x7C / 255, green: 0x6C / 255, blue: 0xFF / 255)
+    static let teal = Color(red: 0x4E / 255, green: 0xD8 / 255, blue: 0xC3 / 255)
+    static let peach = Color(red: 0xFF / 255, green: 0xB3 / 255, blue: 0x8A / 255)
+    static let rose = Color(red: 0xE8 / 255, green: 0x8C / 255, blue: 0xC4 / 255)
+    static let text = Color(red: 0xF4 / 255, green: 0xF1 / 255, blue: 0xFF / 255)
+
+    static let ring = AngularGradient(
+        colors: [violet, teal, peach, rose],
+        center: .center,
+        startAngle: .degrees(-90),
+        endAngle: .degrees(270)
+    )
+}
 
 struct VisualEffectBlur: NSViewRepresentable {
     var material: NSVisualEffectView.Material = .fullScreenUI
@@ -25,9 +43,88 @@ struct VisualEffectBlur: NSViewRepresentable {
     }
 }
 
-struct BlockOverlayView: View {
-    @ObservedObject var focus = FocusSessionManager.shared
+/// Two soft drifting color washes behind the content.
+private struct AuroraOrbs: View {
+    @State private var drift = false
 
+    var body: some View {
+        GeometryReader { geo in
+            let base = max(geo.size.width, geo.size.height)
+            ZStack {
+                Circle()
+                    .fill(RadialGradient(
+                        colors: [Aurora.violet.opacity(0.5), .clear],
+                        center: .center, startRadius: 0, endRadius: base * 0.42
+                    ))
+                    .frame(width: base * 0.85, height: base * 0.85)
+                    .position(x: geo.size.width * 0.18, y: geo.size.height * 0.05)
+                    .offset(x: drift ? base * 0.04 : 0, y: drift ? base * 0.03 : 0)
+
+                Circle()
+                    .fill(RadialGradient(
+                        colors: [Aurora.teal.opacity(0.4), .clear],
+                        center: .center, startRadius: 0, endRadius: base * 0.4
+                    ))
+                    .frame(width: base * 0.8, height: base * 0.8)
+                    .position(x: geo.size.width * 0.85, y: geo.size.height * 0.95)
+                    .offset(x: drift ? -base * 0.04 : 0, y: drift ? -base * 0.03 : 0)
+
+                Circle()
+                    .fill(RadialGradient(
+                        colors: [Aurora.peach.opacity(0.25), .clear],
+                        center: .center, startRadius: 0, endRadius: base * 0.25
+                    ))
+                    .frame(width: base * 0.5, height: base * 0.5)
+                    .position(x: geo.size.width * 0.9, y: geo.size.height * 0.25)
+                    .offset(y: drift ? base * 0.03 : 0)
+            }
+            .blur(radius: 46)
+        }
+        .onAppear {
+            withAnimation(.easeInOut(duration: 14).repeatForever(autoreverses: true)) {
+                drift = true
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
+/// The signature: an aurora ring that fills as the session elapses, with the
+/// live countdown inside.
+private struct SessionRing: View {
+    @ObservedObject var focus = FocusSessionManager.shared
+    let diameter: CGFloat
+
+    var body: some View {
+        ZStack {
+            Circle()
+                .stroke(Aurora.text.opacity(0.08), lineWidth: 7)
+
+            Circle()
+                .trim(from: 0, to: max(0.003, focus.progress))
+                .stroke(Aurora.ring, style: StrokeStyle(lineWidth: 7, lineCap: .round))
+                .rotationEffect(.degrees(-90))
+                .animation(.spring(response: 0.45, dampingFraction: 1.0), value: focus.progress)
+
+            VStack(spacing: 4) {
+                Text(focus.remainingTimeText)
+                    .font(.system(size: diameter * 0.21, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(Aurora.text)
+                    .contentTransition(.numericText(countsDown: true))
+                    .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.remainingTimeText)
+
+                Text("LEFT")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .kerning(2.2)
+                    .foregroundStyle(Aurora.text.opacity(0.4))
+            }
+        }
+        .frame(width: diameter, height: diameter)
+    }
+}
+
+struct BlockOverlayView: View {
     let appName: String
     /// Compact layout for small windows.
     let compact: Bool
@@ -37,28 +134,30 @@ struct BlockOverlayView: View {
     var body: some View {
         ZStack {
             VisualEffectBlur()
-            Color.black.opacity(0.55)
+            Aurora.ink.opacity(0.72)
+            AuroraOrbs()
 
-            VStack(spacing: compact ? 14 : 22) {
+            VStack(spacing: compact ? 16 : 26) {
                 Text(appName.uppercased())
-                    .font(.system(size: 11, weight: .medium, design: .rounded))
-                    .kerning(1.4)
-                    .foregroundStyle(.white.opacity(0.4))
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .kerning(1.9)
+                    .foregroundStyle(Aurora.text.opacity(0.45))
 
-                Text("Locked in — \(focus.remainingTimeText) left")
-                    .font(.system(size: compact ? 20 : 28, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .foregroundStyle(.white)
-                    .contentTransition(.numericText(countsDown: true))
-                    .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.remainingTimeText)
+                SessionRing(diameter: compact ? 120 : 190)
 
                 Button(action: onCloseApp) {
                     Text("Stay locked in")
-                        .font(.system(size: 14, weight: .medium, design: .rounded))
-                        .foregroundStyle(.black.opacity(0.85))
-                        .padding(.horizontal, 20)
-                        .padding(.vertical, 9)
-                        .background(Capsule().fill(.white.opacity(0.92)))
+                        .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        .foregroundStyle(Aurora.ink.opacity(0.92))
+                        .padding(.horizontal, 24)
+                        .padding(.vertical, 10)
+                        .background(
+                            Capsule().fill(LinearGradient(
+                                colors: [Aurora.violet, Aurora.teal],
+                                startPoint: .leading, endPoint: .trailing
+                            ))
+                        )
+                        .shadow(color: Aurora.violet.opacity(0.45), radius: 16, y: 5)
                 }
                 .buttonStyle(.plain)
                 .help("Closes \(appName)")
@@ -66,10 +165,9 @@ struct BlockOverlayView: View {
                 Button(action: onPass) {
                     Text("2-min pass")
                         .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.35))
+                        .foregroundStyle(Aurora.text.opacity(0.32))
                 }
                 .buttonStyle(.plain)
-                .padding(.top, compact ? 0 : 6)
             }
             .padding(24)
         }

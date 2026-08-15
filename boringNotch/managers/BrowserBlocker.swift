@@ -127,8 +127,10 @@ final class BrowserBlocker {
         guard var components = Bundle.main.url(forResource: "lockedin", withExtension: "html")
             .flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else { return }
         let deadlineMillis = Int(Date().addingTimeInterval(FocusSessionManager.shared.remaining).timeIntervalSince1970 * 1000)
+        let durationSeconds = Int(FocusSessionManager.shared.state?.phaseDuration ?? 0)
         components.queryItems = [
             URLQueryItem(name: "until", value: String(deadlineMillis)),
+            URLQueryItem(name: "duration", value: String(durationSeconds)),
             URLQueryItem(name: "domain", value: domain),
             URLQueryItem(name: "back", value: original.absoluteString),
             URLQueryItem(name: "relock", value: relock ? "1" : "0"),

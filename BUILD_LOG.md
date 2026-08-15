@@ -104,3 +104,10 @@
 - Hello plays every launch (previous iteration) — kept.
 - Block overlay redesigned: covers ONLY the blocked app's windows (CGWindowList bounds by owner PID — no permissions), NSVisualEffectView behind-window blur + black 0.55 tint, app name in caps, live countdown, primary "Stay locked in" pill = graceful app.terminate() + return to previous app, quiet 2-min pass. Watchdog now repositions panels as windows move, hides the overlay when the blocked app loses frontmost, re-covers on reactivation. Compact layout for windows under 420pt tall. Full-screen fallback when no window bounds exist.
 - Block page redesigned: live JS countdown from a deadline param (until, ms epoch), breathing amber halo, domain label in caps, primary "Stay locked in" button → lockedin://close which AppleScripts the tab closed; pass link unchanged. handlePassURL generalized to handleURL (pass|close).
+
+## 2026-08-15 — Iteration 6: aurora block surfaces (Opal-inspired, operator request)
+- Shared design system across both block surfaces: violet-ink ground #0A0812, aurora palette (violet #7C6CFF, teal #4ED8C3, peach #FFB38A, rose #E88CC4 — peach keeps kinship with the island's amber; still no red), SF Pro Rounded throughout.
+- Signature: the session ring — full aurora spectrum revealed clockwise as the session elapses (celebrates progress rather than scolding), live countdown inside. Identical mechanics in SwiftUI (trim over AngularGradient) and CSS (conic reveal + near-ink cover that doubles as the track).
+- Atmosphere: three drifting blurred aurora orbs (16–22s alternate loops; prefers-reduced-motion respected on web), app overlay keeps the behind-window blur beneath the ink tint.
+- Actions: "Stay locked in" = violet→teal gradient pill with soft violet shadow; "2-min pass" stays a whisper.
+- Verified via headless Chrome renders (entrance animation initially made captures look dim — re-rendered with virtual-time budget).
