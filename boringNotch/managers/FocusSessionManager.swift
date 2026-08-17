@@ -32,13 +32,14 @@ final class FocusSessionManager: ObservableObject {
     private(set) var pausedAutomatically: Bool = false
 
     enum TransientEvent {
-        case started, paused, resumed, ended
+        case started, paused, resumed, reset, ended
 
         var label: String {
             switch self {
             case .started: "Focus"
             case .paused: "Paused"
             case .resumed: "Resumed"
+            case .reset: "Reset"
             case .ended: "Ended"
             }
         }
@@ -47,6 +48,7 @@ final class FocusSessionManager: ObservableObject {
             switch self {
             case .started, .resumed: "play.fill"
             case .paused: "pause.fill"
+            case .reset: "arrow.counterclockwise"
             case .ended: "checkmark"
             }
         }
@@ -139,6 +141,22 @@ final class FocusSessionManager: ObservableObject {
         state = s
         persist()
         announce(.resumed)
+        NotificationCenter.default.post(name: .focusPhaseDidChange, object: nil)
+    }
+
+    /// Restart the current phase from its full duration, running immediately.
+    /// Deliberately low-friction: a reset only ever adds focus time.
+    func resetPhase() {
+        guard var s = state else { return }
+        graceTask?.cancel()
+        inGrace = false
+        pausedAutomatically = false
+        s.phaseStart = Date()
+        s.pausedAt = nil
+        state = s
+        persist()
+        startTicker()
+        announce(.reset)
         NotificationCenter.default.post(name: .focusPhaseDidChange, object: nil)
     }
 

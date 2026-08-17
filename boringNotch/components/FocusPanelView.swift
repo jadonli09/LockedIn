@@ -3,10 +3,13 @@
 //  boringNotch
 //
 //  The expanded island: one panel, one row.
-//  Left — play/pause circle. Center — remaining time + phase label, with a
-//  5-second hold-to-confirm ring to end early and preset cycling when idle.
-//  Right — sound toggle and Now Playing title (only when media is active).
-//  No second row. No tabs.
+//  Left — session control: hold 5s to pause (pausing unlocks distractions,
+//  so it costs friction); tap to start / resume. While paused, a second
+//  low-friction control appears: tap to reset the phase to full time (a
+//  reset only ever adds focus). Center — remaining time + phase label,
+//  display only; long-press 5s to end the session. Right — blocker shield,
+//  sound toggle, and Now Playing with the album art washed softly into the
+//  panel's edge (only when media is active). No second row. No tabs.
 //
 
 import Defaults
@@ -21,13 +24,17 @@ struct FocusPanelView: View {
     @Default(.focusSoundVolume) var soundVolume
     @Default(.lastFocusSound) var lastSound
 
-    @State private var holdProgress: CGFloat = 0
-    @State private var isHolding = false
+    @State private var endHoldProgress: CGFloat = 0
+    @State private var isHoldingEnd = false
+    @State private var pauseHoldProgress: CGFloat = 0
+    @State private var isHoldingPause = false
     @State private var showBlockControls = false
+
+    private var mediaActive: Bool { music.isPlaying || !music.isPlayerIdle }
 
     var body: some View {
         HStack(spacing: 0) {
-            playPauseButton
+            sessionControls
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             centerTimer
@@ -38,28 +45,93 @@ struct FocusPanelView: View {
         .padding(.horizontal, 18)
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    // MARK: - Left: session play/pause
-
-    private var playPauseButton: some View {
-        Button {
-            focus.toggle()
-        } label: {
-            ZStack {
-                Circle()
-                    .fill(.white.opacity(0.08))
-                    .frame(width: 44, height: 44)
-                Image(systemName: focus.isRunning ? "pause.fill" : "play.fill")
-                    .font(.system(size: 17, weight: .semibold))
-                    .foregroundStyle(.white.opacity(0.9))
-                    .contentTransition(.symbolEffect(.replace))
+        .background(alignment: .trailing) {
+            if mediaActive {
+                AlbumArtWash(image: music.albumArt)
+                    .transition(.opacity)
             }
         }
-        .buttonStyle(.plain)
+        .animation(.spring(response: 0.42, dampingFraction: 0.8), value: mediaActive)
+        .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.isPaused)
+        .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.hasSession)
     }
 
-    // MARK: - Center: time + label + hold-to-end ring
+    // MARK: - Left: pause (hold) / play (tap), plus reset while paused
+
+    private var sessionControls: some View {
+        HStack(spacing: 10) {
+            playPauseControl
+
+            if focus.hasSession && focus.isPaused {
+                Button {
+                    focus.resetPhase()
+                } label: {
+                    ZStack {
+                        Circle()
+                            .fill(.white.opacity(0.08))
+                            .frame(width: 34, height: 34)
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(.system(size: 13, weight: .semibold))
+                            .foregroundStyle(.white.opacity(0.85))
+                    }
+                }
+                .buttonStyle(.plain)
+                .help("Reset to \(lastPreset.focusMinutes):00")
+                .transition(.opacity.combined(with: .scale(scale: 0.8, anchor: .leading)))
+            }
+        }
+    }
+
+    /// Running → hold 5s to pause (ring fills). Idle/paused → tap to start/resume.
+    private var playPauseControl: some View {
+        ZStack {
+            Circle()
+                .fill(.white.opacity(0.08))
+                .frame(width: 44, height: 44)
+
+            if isHoldingPause {
+                Circle()
+                    .trim(from: 0, to: pauseHoldProgress)
+                    .stroke(.white.opacity(0.6), style: StrokeStyle(lineWidth: 2, lineCap: .round))
+                    .rotationEffect(.degrees(-90))
+                    .frame(width: 44, height: 44)
+            }
+
+            Image(systemName: focus.isRunning ? "pause.fill" : "play.fill")
+                .font(.system(size: 17, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.9))
+                .contentTransition(.symbolEffect(.replace))
+        }
+        .contentShape(Circle())
+        .onTapGesture {
+            // Tap only starts or resumes — pausing requires the hold.
+            guard !focus.isRunning else { return }
+            focus.toggle()
+        }
+        .onLongPressGesture(minimumDuration: 5.0) {
+            guard focus.isRunning else { return }
+            focus.pause()
+            isHoldingPause = false
+            pauseHoldProgress = 0
+        } onPressingChanged: { pressing in
+            guard focus.isRunning else { return }
+            if pressing {
+                isHoldingPause = true
+                pauseHoldProgress = 0
+                withAnimation(.linear(duration: 5.0)) {
+                    pauseHoldProgress = 1
+                }
+            } else {
+                withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
+                    isHoldingPause = false
+                    pauseHoldProgress = 0
+                }
+            }
+        }
+        .help(focus.isRunning ? "Hold 5s to pause" : (focus.hasSession ? "Resume" : "Start"))
+    }
+
+    // MARK: - Center: time + label (display only), hold 5s to end
 
     private var centerTimer: some View {
         VStack(spacing: 2) {
@@ -70,15 +142,15 @@ struct FocusPanelView: View {
                 .contentTransition(.numericText(countsDown: true))
                 .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.remainingTimeText)
 
-            Text(focus.hasSession ? focus.phaseLabel.uppercased() : "READY")
+            Text(centerLabel)
                 .font(.system(size: 11, weight: .medium, design: .rounded))
                 .kerning(1.2)
                 .foregroundStyle(.white.opacity(0.4))
         }
         .overlay {
-            if isHolding {
+            if isHoldingEnd {
                 Circle()
-                    .trim(from: 0, to: holdProgress)
+                    .trim(from: 0, to: endHoldProgress)
                     .stroke(.white.opacity(0.5), style: StrokeStyle(lineWidth: 2, lineCap: .round))
                     .rotationEffect(.degrees(-90))
                     .frame(width: 74, height: 74)
@@ -86,6 +158,7 @@ struct FocusPanelView: View {
         }
         .contentShape(Rectangle())
         .onTapGesture {
+            // Idle only: cycle presets. During a session the time is display-only.
             guard !focus.hasSession else { return }
             cyclePreset()
         }
@@ -94,23 +167,28 @@ struct FocusPanelView: View {
             withAnimation(.spring(response: 0.45, dampingFraction: 1.0)) {
                 focus.endSession()
             }
-            isHolding = false
-            holdProgress = 0
+            isHoldingEnd = false
+            endHoldProgress = 0
         } onPressingChanged: { pressing in
             guard focus.hasSession else { return }
             if pressing {
-                isHolding = true
-                holdProgress = 0
+                isHoldingEnd = true
+                endHoldProgress = 0
                 withAnimation(.linear(duration: 5.0)) {
-                    holdProgress = 1
+                    endHoldProgress = 1
                 }
             } else {
                 withAnimation(.spring(response: 0.3, dampingFraction: 1.0)) {
-                    isHolding = false
-                    holdProgress = 0
+                    isHoldingEnd = false
+                    endHoldProgress = 0
                 }
             }
         }
+    }
+
+    private var centerLabel: String {
+        guard focus.hasSession else { return "READY" }
+        return focus.isPaused ? "PAUSED" : focus.phaseLabel.uppercased()
     }
 
     private var idlePresetText: String {
@@ -125,7 +203,7 @@ struct FocusPanelView: View {
         }
     }
 
-    // MARK: - Right: sound toggle + Now Playing
+    // MARK: - Right: passes, shield, sound, Now Playing
 
     private var rightColumn: some View {
         HStack(spacing: 10) {
@@ -148,20 +226,33 @@ struct FocusPanelView: View {
 
             soundButton
 
-            if music.isPlaying || !music.isPlayerIdle {
-                MarqueeText(text: music.songTitle)
-                    .frame(width: 64, height: 16)
-
-                Button {
-                    music.playPause()
-                } label: {
-                    Image(systemName: music.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundStyle(.white.opacity(0.6))
-                        .contentTransition(.symbolEffect(.replace))
-                }
-                .buttonStyle(.plain)
+            if mediaActive {
+                nowPlaying
             }
+        }
+    }
+
+    /// Track title over the art wash, with play/pause.
+    private var nowPlaying: some View {
+        HStack(spacing: 8) {
+            Image(nsImage: music.albumArt)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: 26, height: 26)
+                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+
+            MarqueeText(text: music.songTitle, color: .white.opacity(0.75))
+                .frame(width: 64, height: 16)
+
+            Button {
+                music.playPause()
+            } label: {
+                Image(systemName: music.isPlaying ? "pause.fill" : "play.fill")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(.white.opacity(0.7))
+                    .contentTransition(.symbolEffect(.replace))
+            }
+            .buttonStyle(.plain)
         }
     }
 
@@ -234,5 +325,37 @@ struct FocusPanelView: View {
             }
         }
         .help("Click to toggle; right-click to pick a sound")
+    }
+}
+
+/// The album art, heavily blurred and faded from the panel's trailing edge
+/// into black — the record's color bleeding into the island, never the
+/// picture itself.
+private struct AlbumArtWash: View {
+    let image: NSImage
+
+    var body: some View {
+        GeometryReader { geo in
+            Image(nsImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: geo.size.width * 0.55, height: geo.size.height)
+                .blur(radius: 28)
+                .saturation(1.15)
+                .opacity(0.5)
+                .mask(
+                    LinearGradient(
+                        stops: [
+                            .init(color: .clear, location: 0),
+                            .init(color: .black.opacity(0.35), location: 0.45),
+                            .init(color: .black, location: 1),
+                        ],
+                        startPoint: .leading,
+                        endPoint: .trailing
+                    )
+                )
+                .frame(width: geo.size.width, height: geo.size.height, alignment: .trailing)
+        }
+        .allowsHitTesting(false)
     }
 }

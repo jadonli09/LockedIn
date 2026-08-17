@@ -118,3 +118,8 @@
 - Signature: the island itself — a notch silhouette at the page top with the amber minutes numeral tucked at its right edge, mirroring the real notch. Progress = attended-minute dots (one per phase minute, accent when attended, rows of 30) + "N OF M MINUTES ATTENDED" line — the product's core promise made visible.
 - Accent follows the user's Settings choice on both surfaces (?accent= param on the web page; Defaults on the overlay).
 - Verified via headless Chrome render.
+
+## 2026-08-16 — Iteration 8: friction model + album art wash
+- Interaction model per operator: pause = friction (5s hold on the play/pause circle, ring fills; unlocks blocked apps so it must cost), reset = easy (single-tap ↺ that only appears while paused; restarts the phase at full time — a reset only ever adds focus). Timer text is display-only during a session (still cycles presets when idle; still hold-5s-to-end). Center label shows PAUSED while paused.
+- Engine: resetPhase() + .reset transient chip. ⌥⌘L now starts/resumes only — never pauses (would bypass the friction).
+- Album art wash: blurred (r28), lightly saturated, 50% opacity art masked from the trailing edge into black — color bleeds into the panel without the picture landing in it. Plus a 26pt rounded art thumb next to the marquee title.

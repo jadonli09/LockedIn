@@ -262,10 +262,17 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         AppBlocker.shared.start()
         BrowserBlocker.shared.start()
 
+        // ⌥⌘L starts or resumes instantly; pausing costs a 5-second hold on
+        // the island (it unlocks blocked apps), so the hotkey never pauses.
         KeyboardShortcuts.onKeyDown(for: .toggleFocusSession) {
             Task { @MainActor in
-                FocusSessionManager.shared.toggle()
-                FocusSessionManager.shared.visualPulse()
+                let focus = FocusSessionManager.shared
+                if !focus.hasSession {
+                    focus.start()
+                } else if focus.isPaused {
+                    focus.resume()
+                }
+                focus.visualPulse()
             }
         }
 
