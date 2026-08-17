@@ -232,8 +232,31 @@ struct FocusPanelView: View {
 
             if mediaActive {
                 nowPlaying
+            } else {
+                resumeMusicButton
             }
         }
+    }
+
+    /// Nothing playing: one quiet note. Tap → the media source resumes
+    /// whatever it last had queued (launching the app if needed), so music can
+    /// start from the island without opening the player.
+    private var resumeMusicButton: some View {
+        Button {
+            music.play()
+            // Ask the controller to refresh sooner than its next poll.
+            Task {
+                try? await Task.sleep(for: .seconds(1.2))
+                music.forceUpdate()
+            }
+        } label: {
+            Image(systemName: "music.note")
+                .font(.system(size: 13, weight: .medium))
+                .foregroundStyle(.white.opacity(0.4))
+        }
+        .buttonStyle(.plain)
+        .help("Play music (\(Defaults[.mediaController].rawValue))")
+        .transition(.opacity)
     }
 
     /// Track title over the art wash, with play/pause.
