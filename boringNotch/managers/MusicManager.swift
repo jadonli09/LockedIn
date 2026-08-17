@@ -88,8 +88,48 @@ class MusicManager: ObservableObject {
             
             // Initialize the active controller after deprecation check
             self.setActiveControllerBasedOnPreference()
+
+            #if DEBUG
+            // Let the real controller publish its first (empty) state, then
+            // overwrite with the simulation.
+            try? await Task.sleep(for: .seconds(1.5))
+            self.simulateNowPlayingIfRequested()
+            #endif
         }
     }
+
+    #if DEBUG
+    /// Sandboxed: write the flag into the container's prefs —
+    /// `defaults write ~/Library/Containers/<bundle-id>/Data/Library/Preferences/<bundle-id> DEBUG_SIMULATE_MEDIA -bool true`
+    /// (or launch with `-DEBUG_SIMULATE_MEDIA YES`). Fakes a playing track
+    /// with a vivid album art so the panel's media UI can be verified without
+    /// a media app; re-asserted on every real controller update so a polling
+    /// controller can't clobber it.
+    static var simulatingMedia: Bool {
+        UserDefaults.standard.bool(forKey: "DEBUG_SIMULATE_MEDIA")
+            || ProcessInfo.processInfo.arguments.contains("-DEBUG_SIMULATE_MEDIA")
+    }
+
+    private func simulateNowPlayingIfRequested() {
+        guard Self.simulatingMedia else { return }
+        NSLog("LockedIn: simulating Now Playing")
+        let size = NSSize(width: 300, height: 300)
+        let art = NSImage(size: size, flipped: false) { rect in
+            NSColor(calibratedRed: 0.95, green: 0.35, blue: 0.25, alpha: 1).setFill()
+            rect.fill()
+            NSColor(calibratedRed: 0.2, green: 0.45, blue: 0.95, alpha: 1).setFill()
+            NSBezierPath(ovalIn: rect.insetBy(dx: 60, dy: 60)).fill()
+            NSColor(calibratedRed: 1, green: 0.85, blue: 0.2, alpha: 1).setFill()
+            NSBezierPath(rect: NSRect(x: 0, y: 0, width: rect.width, height: 70)).fill()
+            return true
+        }
+        songTitle = "Simulated Track With A Long Title"
+        artistName = "Debug Artist"
+        isPlaying = true
+        isPlayerIdle = false
+        updateAlbumArt(newAlbumArt: art)
+    }
+    #endif
 
     deinit {
         destroy()
@@ -182,6 +222,9 @@ class MusicManager: ObservableObject {
     // MARK: - Update Methods
     @MainActor
     private func updateFromPlaybackState(_ state: PlaybackState) {
+        #if DEBUG
+        if Self.simulatingMedia { return }
+        #endif
         // Check for playback state changes (playing/paused)
         if state.isPlaying != self.isPlaying {
             NSLog("Playback state changed: \(state.isPlaying ? "Playing" : "Paused")")
@@ -549,9 +592,8 @@ class MusicManager: ObservableObject {
         workItem?.cancel()
         withAnimation(.smooth) {
             self.albumArt = newAlbumArt
-            if Defaults[.coloredSpectrogram] {
-                self.calculateAverageColor()
-            }
+            // The island's art wash tints from this — always keep it current.
+            self.calculateAverageColor()
         }
     }
 

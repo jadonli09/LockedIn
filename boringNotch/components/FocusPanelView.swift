@@ -34,20 +34,24 @@ struct FocusPanelView: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            sessionControls
-                .frame(maxWidth: .infinity, alignment: .leading)
+            // Left cluster: controls + timer, so the right half is free for
+            // media without ever crowding the time.
+            HStack(spacing: 16) {
+                sessionControls
+                centerTimer
+            }
+            .layoutPriority(1)
 
-            centerTimer
+            Spacer(minLength: 12)
 
             rightColumn
-                .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(.horizontal, 18)
         .padding(.bottom, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(alignment: .trailing) {
+        .background {
             if mediaActive {
-                AlbumArtWash(image: music.albumArt)
+                AlbumArtWash(image: music.albumArt, tint: music.avgColor)
                     .transition(.opacity)
             }
         }
@@ -134,7 +138,7 @@ struct FocusPanelView: View {
     // MARK: - Center: time + label (display only), hold 5s to end
 
     private var centerTimer: some View {
-        VStack(spacing: 2) {
+        VStack(alignment: .leading, spacing: 2) {
             Text(focus.hasSession ? focus.remainingTimeText : idlePresetText)
                 .font(.system(size: 30, weight: .semibold, design: .rounded))
                 .monospacedDigit()
@@ -242,7 +246,8 @@ struct FocusPanelView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
             MarqueeText(text: music.songTitle, color: .white.opacity(0.75))
-                .frame(width: 64, height: 16)
+                .frame(width: 96, height: 16)
+                .id(music.songTitle)
 
             Button {
                 music.playPause()
@@ -328,33 +333,36 @@ struct FocusPanelView: View {
     }
 }
 
-/// The album art, heavily blurred and faded from the panel's trailing edge
-/// into black — the record's color bleeding into the island, never the
-/// picture itself.
+/// The record's color blooming in from the panel's trailing edge: a tint of
+/// the art's dominant color plus a softly blurred copy of the art, masked by
+/// a long horizontal ease so there is no edge anywhere — hue, not picture.
 private struct AlbumArtWash: View {
     let image: NSImage
+    let tint: NSColor
 
     var body: some View {
         GeometryReader { geo in
-            Image(nsImage: image)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: geo.size.width * 0.55, height: geo.size.height)
-                .blur(radius: 28)
-                .saturation(1.15)
-                .opacity(0.5)
-                .mask(
-                    LinearGradient(
-                        stops: [
-                            .init(color: .clear, location: 0),
-                            .init(color: .black.opacity(0.35), location: 0.45),
-                            .init(color: .black, location: 1),
-                        ],
-                        startPoint: .leading,
-                        endPoint: .trailing
-                    )
-                )
-                .frame(width: geo.size.width, height: geo.size.height, alignment: .trailing)
+            ZStack {
+                Color(nsColor: tint).opacity(0.42)
+                Image(nsImage: image)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: geo.size.width, height: geo.size.height)
+                    .blur(radius: 30)
+                    .saturation(1.3)
+                    .opacity(0.35)
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .mask(
+                LinearGradient(stops: [
+                    .init(color: .clear, location: 0.30),
+                    .init(color: .black.opacity(0.02), location: 0.45),
+                    .init(color: .black.opacity(0.08), location: 0.58),
+                    .init(color: .black.opacity(0.2), location: 0.7),
+                    .init(color: .black.opacity(0.42), location: 0.84),
+                    .init(color: .black.opacity(0.7), location: 1.0),
+                ], startPoint: .leading, endPoint: .trailing)
+            )
         }
         .allowsHitTesting(false)
     }
