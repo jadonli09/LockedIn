@@ -147,3 +147,10 @@
 - Gotcha found live: inside a browser `tell` block the bare word `tab` is the tab CLASS, so the delimiter must be a literal "|" — output initially came back as "1tab2tabhttps://…" and silently never parsed.
 - VERIFIED end-to-end in Comet with the operator away: (1) youtube.com in an inactive tab of a background window while Finder frontmost → redirected within one poll; (2) two more youtube tabs added to a second window with Comet HIDDEN → all three redirected, zero youtube URLs remained. Test tabs cleaned up. 21/21 unit tests still green.
 - Cost: one script per running browser per poll; with ~15 tabs it's well under 100ms. Comet's own scan needs no additional permission (same Automation grant).
+
+## 2026-08-17 — Iteration 13: the uncatchable 2-min pass
+- Operator: make the pass "impossible" — a liquid-glass button that flees the cursor and returns home when it backs off. Implemented on both surfaces with identical physics: trigger radius 140pt from the button's CURRENT center; each hop 190pt directly away along the cursor→button vector with ±0.35 sideways jitter; hops bounce back toward home at the arena bounds; cursor > 2.2× radius away → springs home.
+- App overlay: RunawayPassButton (SwiftUI, onContinuousHover on the arena, position-driven, 0.2s bouncy spring), GlassCapsule (ultraThinMaterial + top-down sheen + luminous rim + specular top streak + soft shadow). Panel now acceptsMouseMovedEvents.
+- Block page: .pass-arena + JS mousemove with the same math; glass via backdrop-filter + inset highlights; 0.18s overshoot cubic-bezier hop, 0.6s ease home.
+- VERIFIED with a puppeteer synthetic chase (40 steps, cursor always steering at the button's live position): min cursor–button gap 51px (button ~32px tall) — never catchable; after retreat, distance from home = 0px. First tuning (110/150) got within 21px mid-hop → widened.
+- DEBUG_SIMULATE_BLOCK now also honors the `-DEBUG_SIMULATE_BLOCK YES` launch arg (sandbox-proof).

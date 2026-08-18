@@ -255,7 +255,8 @@ final class AppBlocker {
     /// blocked-app activation 2s after launch so the overlay is
     /// screenshot-verifiable without granting anything.
     private func simulateBlockIfRequested() {
-        guard UserDefaults.standard.bool(forKey: "DEBUG_SIMULATE_BLOCK") else { return }
+        guard UserDefaults.standard.bool(forKey: "DEBUG_SIMULATE_BLOCK")
+                || ProcessInfo.processInfo.arguments.contains("-DEBUG_SIMULATE_BLOCK") else { return }
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(2))
             if !FocusSessionManager.shared.hasSession {

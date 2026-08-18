@@ -100,12 +100,8 @@ struct BlockOverlayView: View {
                 .help("Closes \(appName)")
                 .padding(.top, compact ? 2 : 8)
 
-                Button(action: onPass) {
-                    Text("2-min pass")
-                        .font(.system(size: 12, weight: .medium, design: .rounded))
-                        .foregroundStyle(.white.opacity(0.3))
-                }
-                .buttonStyle(.plain)
+                RunawayPassButton(action: onPass)
+                    .frame(height: 44)
             }
             .padding(24)
         }
@@ -116,6 +112,107 @@ struct BlockOverlayView: View {
         let totalMinutes = max(1, Int((focus.state?.phaseDuration ?? 60) / 60))
         let attended = min(totalMinutes, Int(focus.progress * Double(totalMinutes)))
         return "\(attended) OF \(totalMinutes) MINUTES ATTENDED"
+    }
+}
+
+/// The 2-minute pass, made impossible: a liquid-glass capsule that runs from
+/// the cursor. As the pointer approaches it springs away along the
+/// pointer→button vector; when the pointer backs off it eases home. Fast,
+/// slightly bouncy, and never catchable.
+struct RunawayPassButton: View {
+    let action: () -> Void
+
+    @State private var offset: CGSize = .zero
+
+    /// Pointer closer than this (from the button's *current* center) triggers a hop.
+    private let triggerRadius: CGFloat = 140
+    /// How far each hop moves it.
+    private let hop: CGFloat = 190
+    /// Cap so it never leaves the visible area of even a small window.
+    private let maxExcursion: CGFloat = 220
+
+    var body: some View {
+        GeometryReader { geo in
+            let home = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
+            let center = CGPoint(x: home.x + offset.width, y: home.y + offset.height)
+
+            Button(action: action) {
+                Text("2-min pass")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.85))
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(GlassCapsule())
+            }
+            .buttonStyle(.plain)
+            .position(center)
+            .animation(.spring(response: 0.2, dampingFraction: 0.65), value: offset)
+            .onContinuousHover(coordinateSpace: .local) { phase in
+                switch phase {
+                case .active(let p):
+                    flee(from: p, center: center, home: home)
+                case .ended:
+                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                        offset = .zero
+                    }
+                }
+            }
+            .frame(width: geo.size.width, height: geo.size.height)
+            .contentShape(Rectangle())
+        }
+        // The arena is the overlay's full width; the button roams inside it.
+        .frame(maxWidth: .infinity)
+    }
+
+    private func flee(from p: CGPoint, center: CGPoint, home: CGPoint) {
+        let dx = center.x - p.x
+        let dy = center.y - p.y
+        let dist = max(1, sqrt(dx * dx + dy * dy))
+        if dist < triggerRadius {
+            // Move directly away from the pointer, with a little sideways
+            // jitter so it doesn't just slide along one axis.
+            let ux = dx / dist, uy = dy / dist
+            let jitter = CGFloat.random(in: -0.35...0.35)
+            var nx = offset.width + (ux - uy * jitter) * hop
+            var ny = offset.height + (uy + ux * jitter) * hop * 0.6
+            // If it would leave the arena, bounce back toward home instead.
+            let bound = min(maxExcursion, home.x - 60)
+            if abs(nx) > bound { nx = -nx * 0.5 }
+            if abs(ny) > 60 { ny = -ny * 0.5 }
+            offset = CGSize(width: nx, height: ny)
+        } else if dist > triggerRadius * 2.2, offset != .zero {
+            // Pointer wandered off: come home.
+            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
+                offset = .zero
+            }
+        }
+    }
+}
+
+/// Liquid-glass capsule: frosted fill, luminous rim, soft inner highlight.
+private struct GlassCapsule: View {
+    var body: some View {
+        ZStack {
+            Capsule()
+                .fill(.ultraThinMaterial)
+            Capsule()
+                .fill(LinearGradient(
+                    colors: [.white.opacity(0.22), .white.opacity(0.04)],
+                    startPoint: .top, endPoint: .bottom
+                ))
+            Capsule()
+                .strokeBorder(LinearGradient(
+                    colors: [.white.opacity(0.7), .white.opacity(0.15), .white.opacity(0.5)],
+                    startPoint: .topLeading, endPoint: .bottomTrailing
+                ), lineWidth: 1)
+            // Specular streak along the top edge.
+            Capsule()
+                .trim(from: 0.05, to: 0.45)
+                .stroke(.white.opacity(0.55), lineWidth: 1.2)
+                .blur(radius: 0.6)
+                .padding(1)
+        }
+        .shadow(color: .black.opacity(0.35), radius: 10, y: 4)
     }
 }
 
@@ -147,6 +244,7 @@ final class BlockOverlayController {
                 defer: false
             )
             panel.level = .screenSaver
+            panel.acceptsMouseMovedEvents = true
             panel.isOpaque = false
             panel.backgroundColor = .clear
             panel.hasShadow = false
