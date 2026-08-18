@@ -33,16 +33,21 @@ enum LegacyPreferencesMigration {
         guard !defaults.bool(forKey: markerKey) else { return }
         defer { defaults.set(true, forKey: markerKey) }
 
-        // Sandbox: ~/Library/Containers/<legacy-id>/Data/Library/Preferences/<legacy-id>.plist
-        // resolves relative to the *real* home even from inside our own container.
-        let realHome = FileManager.default.homeDirectoryForCurrentUser.path
-            .replacingOccurrences(of: "/Library/Containers/com.jadonli.lockedin/Data", with: "")
-        let legacyPlist = URL(fileURLWithPath: realHome)
-            .appendingPathComponent("Library/Containers/\(legacyBundleID)/Data/Library/Preferences/\(legacyBundleID).plist")
-
-        guard let data = try? Data(contentsOf: legacyPlist),
+        // Inside our sandbox, ~ resolves to our own container; the legacy
+        // container lives under the real home. Try the real home first (via
+        // the account's pw_dir), then fall back to whatever ~ resolves to.
+        let realHome = String(cString: getpwuid(getuid()).pointee.pw_dir)
+        let candidates = [realHome, NSHomeDirectory()].map { home in
+            URL(fileURLWithPath: home)
+                .appendingPathComponent("Library/Containers/\(legacyBundleID)/Data/Library/Preferences/\(legacyBundleID).plist")
+        }
+        guard let legacyPlist = candidates.first(where: { FileManager.default.fileExists(atPath: $0.path) }),
+              let data = try? Data(contentsOf: legacyPlist),
               let legacy = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
-        else { return }
+        else {
+            NSLog("LockedIn: no legacy preferences found to migrate")
+            return
+        }
 
         var carried = 0
         for key in keysToCarry where defaults.object(forKey: key) == nil {

@@ -24,7 +24,16 @@ case "${1:-restart}" in
     xcodebuild -scheme LockedIn -configuration Debug build \
       -derivedDataPath build/DerivedData \
       CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO | tail -2
-    codesign --force --deep -s "LockedIn Dev" "$APP"
+    # Re-sign with the stable identity WITHOUT dropping the entitlements Xcode
+    # applied (a bare --deep re-sign strips them and the app runs unsandboxed).
+    ENT=$(mktemp).plist
+    codesign -d --entitlements :"$ENT" "$APP" 2>/dev/null || true
+    if [ -s "$ENT" ]; then
+      codesign --force --deep -s "LockedIn Dev" --entitlements "$ENT" "$APP"
+    else
+      codesign --force --deep -s "LockedIn Dev" "$APP"
+    fi
+    rm -f "$ENT"
     osascript -e 'quit app "LockedIn"' 2>/dev/null || true
     sleep 1
     open "$APP"
