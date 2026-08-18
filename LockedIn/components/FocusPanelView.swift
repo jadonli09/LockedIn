@@ -428,16 +428,19 @@ private struct AlbumArtVignette: View {
 
     var body: some View {
         GeometryReader { geo in
-            // Wider zone, soft blur, and a long, gentle ease-in so the left
-            // side dissolves with no visible edge at all.
+            // Wide zone, heavy blur so no shape in the art can form an edge,
+            // and a long, gentle ease-in on the left. Blur is applied BEFORE
+            // clipping and scaled up so it doesn't fade at the frame edges.
             let zoneWidth = geo.size.width * 0.72
             Image(nsImage: image)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
+                .frame(width: zoneWidth * 1.3, height: geo.size.height * 1.6)
+                .blur(radius: 22)
                 .frame(width: zoneWidth, height: geo.size.height)
                 .clipped()
-                .blur(radius: 6)
-                .opacity(0.42)
+                .saturation(1.25)
+                .opacity(0.5)
                 .mask(
                     LinearGradient(stops: [
                         .init(color: .clear, location: 0),
@@ -458,7 +461,7 @@ private struct AlbumArtVignette: View {
                         .init(color: .clear, location: 1.0),
                     ], startPoint: .top, endPoint: .bottom)
                 )
-                .position(x: geo.size.width * 0.36, y: geo.size.height / 2)
+                .position(x: geo.size.width * 0.30, y: geo.size.height / 2)
         }
         .allowsHitTesting(false)
     }
