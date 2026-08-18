@@ -18,6 +18,18 @@
 	<array>
 		<string>com.spotify.client</string>
 		<string>com.apple.Music</string>
+		<!-- Browsers scripted by BrowserBlocker (tab URL read + redirect).
+		     App Sandbox refuses Apple Events to any target not listed here,
+		     silently, before the TCC Automation prompt can ever appear. -->
+		<string>com.apple.Safari</string>
+		<string>com.google.Chrome</string>
+		<string>company.thebrowser.Browser</string>
+		<string>company.thebrowser.dia</string>
+		<string>com.microsoft.edgemac</string>
+		<string>ai.perplexity.comet</string>
+		<string>com.operasoftware.Opera</string>
+		<string>com.brave.Browser</string>
+		<string>com.vivaldi.Vivaldi</string>
 	</array>
 </dict>
 </plist>
