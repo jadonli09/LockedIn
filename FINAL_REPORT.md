@@ -1,3 +1,5 @@
+> **Note (2026-08-17):** this document is the historical record from the overnight build. The project has since been fully re-identified as LockedIn — scheme `LockedIn`, product `LockedIn.app`, bundle id `com.jadonli.lockedin`. Where this file says `boringNotch` / `theboringteam.boringnotch`, read the new names; `./scripts/lockedin build|start|stop|restart` is the current way to run it.
+
 # FINAL_REPORT — LockedIn overnight build
 
 **Status: Complete with limitations.** All Must phases (1–4), all Should phases (5–6), and all three Stretch phases (7–9) are built, committed, and verified to the extent possible without human-grantable permissions. Total wall-clock: **17:55–18:45 PDT (~50 minutes)** against a 4-hour budget — fast incremental builds (~90s) and a fully scriptable verification loop made the difference.

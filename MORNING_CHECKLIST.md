@@ -1,3 +1,5 @@
+> **Note (2026-08-17):** this document is the historical record from the overnight build. The project has since been fully re-identified as LockedIn — scheme `LockedIn`, product `LockedIn.app`, bundle id `com.jadonli.lockedin`. Where this file says `boringNotch` / `theboringteam.boringnotch`, read the new names; `./scripts/lockedin build|start|stop|restart` is the current way to run it.
+
 # MORNING_CHECKLIST — 10 minutes to a fully live LockedIn
 
 Everything below needs a human at the keyboard; the code paths are built, tested where possible, and silently no-op until you do these.

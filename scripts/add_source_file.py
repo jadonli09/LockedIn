@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Register new .swift files with the boringNotch app target.
+"""Register new .swift files with the LockedIn app target.
 
 Usage: add_source_file.py <group-name> <FileName.swift> [<group-name> <FileName.swift> ...]
 Group name must match an existing PBXGroup (e.g. managers, components, extensions,
@@ -7,7 +7,7 @@ helpers, models, observers). The file must already exist inside that folder on d
 """
 import re, sys, secrets
 
-PBX = 'boringNotch.xcodeproj/project.pbxproj'
+PBX = 'LockedIn.xcodeproj/project.pbxproj'
 
 def newid():
     return secrets.token_hex(12).upper()

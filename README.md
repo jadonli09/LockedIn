@@ -8,18 +8,20 @@ Three capabilities, nothing else:
 - **Blocking** — blocklisted apps get a full-screen black overlay during focus periods ("Locked in — 17:24 left"), with a quiet 2-minute pass so you never have to kill a session just to check one thing. Website blocking redirects blocked domains to a local block page in Safari, Chrome, Arc, and Edge.
 - **Focus sounds** — seamless ambient loops with 400 ms fades, auto-ducked under whatever you're actually listening to.
 
-At rest, the island is invisible: pure `#000`, flush with the hardware notch, one faint accent glow along the bottom edge. During a session the glow becomes a thin arc that drains as the time does. Hover to expand into a single one-row panel. No tabs, no badges, no streaks, no red.
+At rest, the island is invisible: pure `#000`, flush with the hardware notch, nothing else. During a session a small remaining-minutes numeral sits at its edge. Hover to expand into a single one-row panel. No tabs, no badges, no streaks, no red.
 
 Invisible session behaviors: display keep-awake during focus periods, idle auto-pause (idle time never counts — 25 minutes means 25 attended minutes), and optional Auto-DND via two Shortcuts.
 
 ## Building
 
 ```sh
-xcodebuild -scheme boringNotch -configuration Debug build
+xcodebuild -scheme LockedIn -configuration Debug build
 xcodebuild -scheme LockedInTests test
 ```
 
-Requires macOS 15+, Xcode 16+, Apple Silicon.
+Or `./scripts/lockedin build` to build, sign, and (re)launch in one step. Requires macOS 15+, Xcode 16+, Apple Silicon.
+
+Bundle id `com.jadonli.lockedin`; the Now Playing helper is `com.jadonli.lockedin.helper`.
 
 ## Credit & license
 
