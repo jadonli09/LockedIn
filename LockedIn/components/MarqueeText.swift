@@ -17,6 +17,8 @@ struct MarqueeText: View {
     @State private var textWidth: CGFloat = 0
     @State private var offset: CGFloat = 0
 
+    private let fadeWidth: CGFloat = 14
+
     var body: some View {
         GeometryReader { geo in
             let overflow = textWidth - geo.size.width
@@ -33,7 +35,19 @@ struct MarqueeText: View {
                 )
                 .offset(x: offset)
                 .frame(width: geo.size.width, alignment: .leading)
-                .clipped()
+                // Soft edges instead of a hard clip: the text dissolves as it
+                // slides out on the left, and the trailing overflow fades on
+                // the right. Edges only soften when there's something past them.
+                .mask(
+                    HStack(spacing: 0) {
+                        LinearGradient(colors: [.clear, .black], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: offset < -0.5 ? fadeWidth : 0)
+                        Color.black
+                        LinearGradient(colors: [.black, .clear], startPoint: .leading, endPoint: .trailing)
+                            .frame(width: (overflow > 0 && offset > -overflow + 0.5) ? fadeWidth : 0)
+                    }
+                    .animation(.linear(duration: 0.25), value: offset < -0.5)
+                )
                 .task(id: "\(text)-\(overflow > 0)") {
                     offset = 0
                     guard overflow > 0 else { return }
