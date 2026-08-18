@@ -134,3 +134,8 @@
 - Layout: no media → controls | timer centered | actions (as originally). Media → controls | media | timer | actions — music takes the middle and pushes the timer right, per operator.
 - Art treatment replaced (operator's Cuesheet reference: crisp art dissolving over a long ramp, not a blurred smear): the album cover itself, at 42% opacity, masked horizontally (long ease in from ~0→62%, plateau, release before the timer) AND vertically (soft top/bottom) — dissolves on all four sides, no block anywhere. Thumb removed (the vignette IS the art); track title + artist stacked over it.
 - Verified in the offscreen harness with both layouts. Live capture blocked this round by the operator's display arrangement changing mid-session (island on a non-main screen).
+
+## 2026-08-17 — Iteration 11: timer left / media right, break screen, skip break
+- Layout swap per operator: controls | timer | media | actions. Vignette re-anchored to the right-center (x≈66%), still dissolving on all four sides — art sits under the track info, releases before the action icons.
+- Break screen: replaces the timer during breaks — a rotating quiet nudge ("Stand up. Look far away." etc., seeded by completed-focus count so it changes each break) over "BREAK · MM:SS", plus a "Skip break" capsule → FocusSessionManager.skipBreak() advances straight to the next focus phase (announces Focus chip). Album vignette suppressed during breaks — the break screen owns the panel.
+- Verified all three modes (media / plain / break) in the offscreen harness.

@@ -160,6 +160,19 @@ final class FocusSessionManager: ObservableObject {
         NotificationCenter.default.post(name: .focusPhaseDidChange, object: nil)
     }
 
+    /// Skip the current break straight into the next focus phase.
+    func skipBreak() {
+        guard let s = state, s.phase.isBreak else { return }
+        graceTask?.cancel()
+        inGrace = false
+        pausedAutomatically = false
+        state = s.advanced(at: Date(), longBreaksEnabled: Defaults[.longBreaksEnabled])
+        persist()
+        startTicker()
+        announce(.started)
+        NotificationCenter.default.post(name: .focusPhaseDidChange, object: nil)
+    }
+
     /// Start / pause / resume from a single control (play-pause button, ⌥⌘L).
     func toggle() {
         if state == nil {

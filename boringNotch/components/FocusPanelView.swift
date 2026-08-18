@@ -32,9 +32,11 @@ struct FocusPanelView: View {
 
     private var mediaActive: Bool { music.isPlaying || !music.isPlayerIdle }
 
+    private var onBreak: Bool { focus.hasSession && !focus.isFocusPhase }
+
     var body: some View {
         ZStack {
-            if mediaActive {
+            if mediaActive && !onBreak {
                 AlbumArtVignette(image: music.albumArt)
                     .transition(.opacity)
             }
@@ -42,16 +44,22 @@ struct FocusPanelView: View {
             HStack(spacing: 0) {
                 sessionControls
 
-                Spacer(minLength: 12)
+                Spacer(minLength: 14)
 
-                if mediaActive {
-                    // Music takes the middle and pushes the timer right.
-                    nowPlaying
-                        .transition(.opacity.combined(with: .move(edge: .leading)))
-                    Spacer(minLength: 16)
+                if onBreak {
+                    breakScreen
+                        .transition(.opacity.combined(with: .scale(scale: 0.96)))
+                } else {
+                    // Timer holds the left-center; media (when playing) takes
+                    // the right-center over its own art.
+                    centerTimer
+                    Spacer(minLength: 12)
+                    if mediaActive {
+                        nowPlaying
+                            .transition(.opacity.combined(with: .move(edge: .trailing)))
+                        Spacer(minLength: 12)
+                    }
                 }
-
-                centerTimer
 
                 Spacer(minLength: 12)
 
@@ -64,6 +72,52 @@ struct FocusPanelView: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: mediaActive)
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.isPaused)
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.hasSession)
+        .animation(.spring(response: 0.42, dampingFraction: 0.8), value: onBreak)
+    }
+
+    // MARK: - Break screen: quiet nudge + countdown + skip
+
+    private var breakScreen: some View {
+        HStack(spacing: 18) {
+            VStack(alignment: .leading, spacing: 3) {
+                Text(breakNudge)
+                    .font(.system(size: 15, weight: .semibold, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.9))
+                Text("BREAK · \(focus.remainingTimeText)")
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+                    .kerning(1.2)
+                    .monospacedDigit()
+                    .foregroundStyle(.white.opacity(0.4))
+                    .contentTransition(.numericText(countsDown: true))
+                    .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.remainingTimeText)
+            }
+
+            Button {
+                focus.skipBreak()
+            } label: {
+                Text("Skip break")
+                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.75))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 6)
+                    .background(Capsule().fill(.white.opacity(0.1)))
+            }
+            .buttonStyle(.plain)
+            .help("Start the next focus phase now")
+        }
+    }
+
+    /// Rotates per break so it doesn't go stale, seeded by the break count.
+    private var breakNudge: String {
+        let nudges = [
+            "Stand up. Look far away.",
+            "Water, then a window.",
+            "Shoulders down. Slow breath.",
+            "Eyes off the screen for a bit.",
+            "Walk to another room and back.",
+        ]
+        let index = focus.state?.completedFocusCount ?? 0
+        return nudges[index % nudges.count]
     }
 
     // MARK: - Left: pause (hold) / play (tap), plus reset while paused
@@ -363,14 +417,14 @@ struct FocusPanelView: View {
 }
 
 /// The album cover itself, dissolving into the island on all four sides —
-/// long ease in from the left, soft top and bottom, gentle release on the
-/// right before the timer — so the art is *in* the island, never a block.
+/// long ease in from the left (toward the timer), soft top and bottom, and a
+/// gentle release before the actions at the right — so the art is *in* the
+/// island under the track info, never a block.
 private struct AlbumArtVignette: View {
     let image: NSImage
 
     var body: some View {
         GeometryReader { geo in
-            // The art zone sits under the media cluster: from ~12% to ~66%.
             let zoneWidth = geo.size.width * 0.54
             Image(nsImage: image)
                 .resizable()
@@ -381,11 +435,11 @@ private struct AlbumArtVignette: View {
                 .mask(
                     LinearGradient(stops: [
                         .init(color: .clear, location: 0),
-                        .init(color: .black.opacity(0.1), location: 0.22),
-                        .init(color: .black.opacity(0.5), location: 0.45),
-                        .init(color: .black, location: 0.62),
-                        .init(color: .black, location: 0.78),
-                        .init(color: .black.opacity(0.4), location: 0.92),
+                        .init(color: .black.opacity(0.1), location: 0.2),
+                        .init(color: .black.opacity(0.5), location: 0.42),
+                        .init(color: .black, location: 0.6),
+                        .init(color: .black, location: 0.8),
+                        .init(color: .black.opacity(0.35), location: 0.93),
                         .init(color: .clear, location: 1.0),
                     ], startPoint: .leading, endPoint: .trailing)
                 )
@@ -397,7 +451,7 @@ private struct AlbumArtVignette: View {
                         .init(color: .clear, location: 1.0),
                     ], startPoint: .top, endPoint: .bottom)
                 )
-                .position(x: geo.size.width * 0.36, y: geo.size.height / 2)
+                .position(x: geo.size.width * 0.66, y: geo.size.height / 2)
         }
         .allowsHitTesting(false)
     }
