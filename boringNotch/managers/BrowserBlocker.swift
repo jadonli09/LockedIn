@@ -93,37 +93,68 @@ final class BrowserBlocker {
         }
     }
 
+    /// One poll: for every *running* browser (not just the frontmost app),
+    /// walk every window and every tab, and redirect any tab on a blocked
+    /// domain — so a blocked site can't hide in a background window or an
+    /// inactive tab (the Google Meet screen-share case).
     private func checkActiveTab() async {
         if let started = checkStartedAt, Date().timeIntervalSince(started) < 6 { return }
         guard blockingActive else { return }
-        guard let frontmost = NSWorkspace.shared.frontmostApplication,
-              let bundleID = frontmost.bundleIdentifier?.lowercased(),
-              let engine = Self.browsers[bundleID] else { return }
+        let running = Set(NSWorkspace.shared.runningApplications.compactMap { $0.bundleIdentifier?.lowercased() })
+        let targets = Self.browsers.filter { running.contains($0.key) }
+        guard !targets.isEmpty else { return }
         checkStartedAt = Date()
         defer { checkStartedAt = nil }
 
-        let urlScript = switch engine {
-        case .safari:
-            "tell application id \"\(bundleID)\" to get URL of current tab of front window"
-        case .chromium:
-            "tell application id \"\(bundleID)\" to get URL of active tab of front window"
+        for (bundleID, engine) in targets {
+            await scanBrowser(bundleID: bundleID, engine: engine)
         }
-
-        // Missing Automation permission or no window: silently do nothing.
-        guard let descriptor = try? await AppleScriptHelper.execute(urlScript),
-              let urlString = descriptor.stringValue,
-              let url = URL(string: urlString) else { return }
-
-        guard url.scheme != "file" else { return } // already on the block page
-        guard let domain = BlocklistMatcher.domainMatches(host: url.host, blockedDomains: Defaults[.blockedDomains]) else { return }
-
-        if PassCenter.shared.expiry(for: .domain(domain)) != nil { return }
-        let relocking = recentlyPassed.remove(domain) != nil
-
-        await redirect(bundleID: bundleID, engine: engine, from: url, domain: domain, relock: relocking)
     }
 
-    private func redirect(bundleID: String, engine: Engine, from original: URL, domain: String, relock: Bool) async {
+    /// Lists every tab as "windowIndex|tabIndex|url" lines in one round-trip,
+    /// then redirects each blocked tab by exact index. (Inside a browser's
+    /// `tell` block the bare word `tab` is the tab *class*, so the delimiter
+    /// is an explicit "|" character, never the tab character.)
+    private func scanBrowser(bundleID: String, engine: Engine) async {
+        let listScript = """
+        tell application id "\(bundleID)"
+            set out to ""
+            set wi to 0
+            repeat with w in windows
+                set wi to wi + 1
+                set ti to 0
+                repeat with t in tabs of w
+                    set ti to ti + 1
+                    try
+                        set out to out & wi & "|" & ti & "|" & (URL of t) & linefeed
+                    end try
+                end repeat
+            end repeat
+            return out
+        end tell
+        """
+        // Missing Automation permission or no windows: silently do nothing.
+        guard let descriptor = try? await AppleScriptHelper.execute(listScript),
+              let listing = descriptor.stringValue else { return }
+
+        let blocked = Defaults[.blockedDomains]
+        for line in listing.split(separator: "\n") {
+            let parts = line.split(separator: "|", maxSplits: 2, omittingEmptySubsequences: false)
+            guard parts.count == 3,
+                  let windowIndex = Int(parts[0]), let tabIndex = Int(parts[1]),
+                  let url = URL(string: String(parts[2])) else { continue }
+            guard url.scheme != "file" else { continue } // already on the block page
+            guard let domain = BlocklistMatcher.domainMatches(host: url.host, blockedDomains: blocked) else { continue }
+            if PassCenter.shared.expiry(for: .domain(domain)) != nil { continue }
+            let relocking = recentlyPassed.remove(domain) != nil
+
+            await redirect(bundleID: bundleID, engine: engine, windowIndex: windowIndex, tabIndex: tabIndex,
+                           from: url, domain: domain, relock: relocking)
+        }
+    }
+
+    private func redirect(bundleID: String, engine: Engine, windowIndex: Int, tabIndex: Int,
+                          from original: URL, domain: String, relock: Bool) async {
         guard var components = Bundle.main.url(forResource: "lockedin", withExtension: "html")
             .flatMap({ URLComponents(url: $0, resolvingAgainstBaseURL: false) }) else { return }
         let deadlineMillis = Int(Date().addingTimeInterval(FocusSessionManager.shared.remaining).timeIntervalSince1970 * 1000)
@@ -139,12 +170,9 @@ final class BrowserBlocker {
         ]
         guard let blockURL = components.url?.absoluteString else { return }
 
-        let setScript = switch engine {
-        case .safari:
-            "tell application id \"\(bundleID)\" to set URL of current tab of front window to \"\(blockURL)\""
-        case .chromium:
-            "tell application id \"\(bundleID)\" to set URL of active tab of front window to \"\(blockURL)\""
-        }
+        // Same tab/window model on both engines for indexed access.
+        _ = engine
+        let setScript = "tell application id \"\(bundleID)\" to set URL of tab \(tabIndex) of window \(windowIndex) to \"\(blockURL)\""
         try? await AppleScriptHelper.executeVoid(setScript)
     }
 

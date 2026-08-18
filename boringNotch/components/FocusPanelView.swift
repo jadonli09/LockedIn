@@ -50,15 +50,15 @@ struct FocusPanelView: View {
                     breakScreen
                         .transition(.opacity.combined(with: .scale(scale: 0.96)))
                 } else {
-                    // Timer holds the left-center; media (when playing) takes
-                    // the right-center over its own art.
-                    centerTimer
-                    Spacer(minLength: 12)
+                    // Media (when playing) takes the left-center over its own
+                    // art and pushes the timer right; otherwise the timer sits
+                    // centered.
                     if mediaActive {
                         nowPlaying
-                            .transition(.opacity.combined(with: .move(edge: .trailing)))
-                        Spacer(minLength: 12)
+                            .transition(.opacity.combined(with: .move(edge: .leading)))
+                        Spacer(minLength: 16)
                     }
+                    centerTimer
                 }
 
                 Spacer(minLength: 12)
@@ -417,9 +417,9 @@ struct FocusPanelView: View {
 }
 
 /// The album cover itself, dissolving into the island on all four sides —
-/// long ease in from the left (toward the timer), soft top and bottom, and a
-/// gentle release before the actions at the right — so the art is *in* the
-/// island under the track info, never a block.
+/// long ease in from the left, soft top and bottom, gentle release on the
+/// right before the timer — so the art is *in* the island under the track
+/// info, never a block.
 private struct AlbumArtVignette: View {
     let image: NSImage
 
@@ -451,7 +451,7 @@ private struct AlbumArtVignette: View {
                         .init(color: .clear, location: 1.0),
                     ], startPoint: .top, endPoint: .bottom)
                 )
-                .position(x: geo.size.width * 0.66, y: geo.size.height / 2)
+                .position(x: geo.size.width * 0.36, y: geo.size.height / 2)
         }
         .allowsHitTesting(false)
     }

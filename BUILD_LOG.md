@@ -139,3 +139,11 @@
 - Layout swap per operator: controls | timer | media | actions. Vignette re-anchored to the right-center (x≈66%), still dissolving on all four sides — art sits under the track info, releases before the action icons.
 - Break screen: replaces the timer during breaks — a rotating quiet nudge ("Stand up. Look far away." etc., seeded by completed-focus count so it changes each break) over "BREAK · MM:SS", plus a "Skip break" capsule → FocusSessionManager.skipBreak() advances straight to the next focus phase (announces Focus chip). Album vignette suppressed during breaks — the break screen owns the panel.
 - Verified all three modes (media / plain / break) in the offscreen harness.
+
+## 2026-08-17 — Iteration 12: layout revert + Meet screen-share gap closed
+- Reverted to music-left / timer-right (operator preference); vignette back to x≈36%.
+- ROOT CAUSE of the Meet gap: the browser blocker only read the ACTIVE tab of the FRONTMOST app's front window. During a screen share the browser often isn't frontmost, and the blocked site can be in a background window or inactive tab → never polled.
+- Fix: every 2s, for EVERY running browser (not just frontmost), one AppleScript walks every window × every tab and returns "win|tab|url" lines; each blocked tab is redirected by exact window/tab index. Passes and relock-fade preserved per domain.
+- Gotcha found live: inside a browser `tell` block the bare word `tab` is the tab CLASS, so the delimiter must be a literal "|" — output initially came back as "1tab2tabhttps://…" and silently never parsed.
+- VERIFIED end-to-end in Comet with the operator away: (1) youtube.com in an inactive tab of a background window while Finder frontmost → redirected within one poll; (2) two more youtube tabs added to a second window with Comet HIDDEN → all three redirected, zero youtube URLs remained. Test tabs cleaned up. 21/21 unit tests still green.
+- Cost: one script per running browser per poll; with ~15 tabs it's well under 100ms. Comet's own scan needs no additional permission (same Automation grant).
