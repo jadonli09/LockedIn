@@ -33,28 +33,34 @@ struct FocusPanelView: View {
     private var mediaActive: Bool { music.isPlaying || !music.isPlayerIdle }
 
     var body: some View {
-        HStack(spacing: 0) {
-            // Left cluster: controls + timer, so the right half is free for
-            // media without ever crowding the time.
-            HStack(spacing: 16) {
-                sessionControls
-                centerTimer
-            }
-            .layoutPriority(1)
-
-            Spacer(minLength: 12)
-
-            rightColumn
-        }
-        .padding(.horizontal, 18)
-        .padding(.bottom, 6)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background {
+        ZStack {
             if mediaActive {
-                AlbumArtWash(image: music.albumArt, tint: music.avgColor)
+                AlbumArtVignette(image: music.albumArt)
                     .transition(.opacity)
             }
+
+            HStack(spacing: 0) {
+                sessionControls
+
+                Spacer(minLength: 12)
+
+                if mediaActive {
+                    // Music takes the middle and pushes the timer right.
+                    nowPlaying
+                        .transition(.opacity.combined(with: .move(edge: .leading)))
+                    Spacer(minLength: 16)
+                }
+
+                centerTimer
+
+                Spacer(minLength: 12)
+
+                rightColumn
+            }
+            .padding(.horizontal, 18)
         }
+        .padding(.bottom, 6)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: mediaActive)
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.isPaused)
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.hasSession)
@@ -138,7 +144,7 @@ struct FocusPanelView: View {
     // MARK: - Center: time + label (display only), hold 5s to end
 
     private var centerTimer: some View {
-        VStack(alignment: .leading, spacing: 2) {
+        VStack(spacing: 2) {
             Text(focus.hasSession ? focus.remainingTimeText : idlePresetText)
                 .font(.system(size: 30, weight: .semibold, design: .rounded))
                 .monospacedDigit()
@@ -230,9 +236,7 @@ struct FocusPanelView: View {
 
             soundButton
 
-            if mediaActive {
-                nowPlaying
-            } else {
+            if !mediaActive {
                 resumeMusicButton
             }
         }
@@ -259,18 +263,20 @@ struct FocusPanelView: View {
         .transition(.opacity)
     }
 
-    /// Track title over the art wash, with play/pause.
+    /// Track title + artist over the art vignette, with play/pause. The art
+    /// itself is the vignette behind, so no thumbnail here.
     private var nowPlaying: some View {
-        HStack(spacing: 8) {
-            Image(nsImage: music.albumArt)
-                .resizable()
-                .aspectRatio(contentMode: .fill)
-                .frame(width: 26, height: 26)
-                .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
-
-            MarqueeText(text: music.songTitle, color: .white.opacity(0.75))
-                .frame(width: 96, height: 16)
-                .id(music.songTitle)
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 1) {
+                MarqueeText(text: music.songTitle, font: .system(size: 12, weight: .semibold, design: .rounded), color: .white.opacity(0.9))
+                    .frame(width: 118, height: 15)
+                    .id(music.songTitle)
+                Text(music.artistName)
+                    .font(.system(size: 10, weight: .medium, design: .rounded))
+                    .foregroundStyle(.white.opacity(0.5))
+                    .lineLimit(1)
+                    .frame(width: 118, alignment: .leading)
+            }
 
             Button {
                 music.playPause()
@@ -356,36 +362,42 @@ struct FocusPanelView: View {
     }
 }
 
-/// The record's color blooming in from the panel's trailing edge: a tint of
-/// the art's dominant color plus a softly blurred copy of the art, masked by
-/// a long horizontal ease so there is no edge anywhere — hue, not picture.
-private struct AlbumArtWash: View {
+/// The album cover itself, dissolving into the island on all four sides —
+/// long ease in from the left, soft top and bottom, gentle release on the
+/// right before the timer — so the art is *in* the island, never a block.
+private struct AlbumArtVignette: View {
     let image: NSImage
-    let tint: NSColor
 
     var body: some View {
         GeometryReader { geo in
-            ZStack {
-                Color(nsColor: tint).opacity(0.42)
-                Image(nsImage: image)
-                    .resizable()
-                    .aspectRatio(contentMode: .fill)
-                    .frame(width: geo.size.width, height: geo.size.height)
-                    .blur(radius: 30)
-                    .saturation(1.3)
-                    .opacity(0.35)
-            }
-            .frame(width: geo.size.width, height: geo.size.height)
-            .mask(
-                LinearGradient(stops: [
-                    .init(color: .clear, location: 0.30),
-                    .init(color: .black.opacity(0.02), location: 0.45),
-                    .init(color: .black.opacity(0.08), location: 0.58),
-                    .init(color: .black.opacity(0.2), location: 0.7),
-                    .init(color: .black.opacity(0.42), location: 0.84),
-                    .init(color: .black.opacity(0.7), location: 1.0),
-                ], startPoint: .leading, endPoint: .trailing)
-            )
+            // The art zone sits under the media cluster: from ~12% to ~66%.
+            let zoneWidth = geo.size.width * 0.54
+            Image(nsImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
+                .frame(width: zoneWidth, height: geo.size.height)
+                .clipped()
+                .opacity(0.42)
+                .mask(
+                    LinearGradient(stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black.opacity(0.1), location: 0.22),
+                        .init(color: .black.opacity(0.5), location: 0.45),
+                        .init(color: .black, location: 0.62),
+                        .init(color: .black, location: 0.78),
+                        .init(color: .black.opacity(0.4), location: 0.92),
+                        .init(color: .clear, location: 1.0),
+                    ], startPoint: .leading, endPoint: .trailing)
+                )
+                .mask(
+                    LinearGradient(stops: [
+                        .init(color: .clear, location: 0),
+                        .init(color: .black, location: 0.32),
+                        .init(color: .black, location: 0.68),
+                        .init(color: .clear, location: 1.0),
+                    ], startPoint: .top, endPoint: .bottom)
+                )
+                .position(x: geo.size.width * 0.36, y: geo.size.height / 2)
         }
         .allowsHitTesting(false)
     }

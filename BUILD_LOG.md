@@ -129,3 +129,8 @@
 - Layout: timer moved LEFT beside the play/pause circle (operator allowed off-center); media cluster owns the right half; marquee widened to 96pt and keyed to the title so it restarts cleanly.
 - DEBUG_SIMULATE_MEDIA harness (flag or `-DEBUG_SIMULATE_MEDIA YES` launch arg) fakes a playing track + vivid art and suppresses real controller updates while on.
 - DISCOVERY: the app is sandboxed (upstream entitlement) → its prefs live in ~/Library/Containers/theboringteam.boringnotch/…, NOT ~/Library/Preferences. Every `defaults write theboringteam.boringnotch` used for testing so far hit the wrong plist. Test scripts now target the container path.
+
+## 2026-08-17 — Iteration 10: media-in-the-middle layout + four-side art vignette
+- Layout: no media → controls | timer centered | actions (as originally). Media → controls | media | timer | actions — music takes the middle and pushes the timer right, per operator.
+- Art treatment replaced (operator's Cuesheet reference: crisp art dissolving over a long ramp, not a blurred smear): the album cover itself, at 42% opacity, masked horizontally (long ease in from ~0→62%, plateau, release before the timer) AND vertically (soft top/bottom) — dissolves on all four sides, no block anywhere. Thumb removed (the vignette IS the art); track title + artist stacked over it.
+- Verified in the offscreen harness with both layouts. Live capture blocked this round by the operator's display arrangement changing mid-session (island on a non-main screen).
