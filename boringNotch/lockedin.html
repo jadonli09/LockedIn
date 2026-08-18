@@ -128,15 +128,15 @@
      Position is driven by JS; the transition is the spring-ish hop. */
   .pass-arena {
     position: relative;
-    width: min(560px, 90vw);
-    height: 48px;
+    width: min(760px, 94vw);
+    height: 76px;
   }
   a.pass {
     position: absolute;
     left: 50%;
     top: 50%;
     transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px)));
-    transition: transform 0.18s cubic-bezier(0.34, 1.3, 0.64, 1);
+    will-change: transform;
     color: rgba(255, 255, 255, 0.85);
     font-size: 12px;
     font-weight: 500;
@@ -155,7 +155,7 @@
     white-space: nowrap;
     user-select: none;
   }
-  a.pass.home { transition: transform 0.6s cubic-bezier(0.2, 0.9, 0.3, 1); }
+
 
   @media (prefers-reduced-motion: reduce) {
     .stack { animation: none; }
@@ -204,40 +204,72 @@
       + "&b=" + encodeURIComponent(browser);
   }
 
-  // Runaway pass: hop away along the cursor→button vector when the cursor
-  // gets close; ease home once it backs off.
+  // Runaway pass, continuous physics: the button is a damped particle
+  // pushed away by an inverse-distance field around the cursor (harder the
+  // closer you get — the speed adapts to how hard you chase), pulled home
+  // by a soft spring, and integrated every frame. No hops, no jitter.
   (function () {
     const arena = document.getElementById("pass-arena");
     const pass = document.getElementById("pass");
-    const TRIGGER = 140, HOP = 190;
-    let dx = 0, dy = 0;
-    function apply(home) {
-      pass.classList.toggle("home", home);
-      pass.style.setProperty("--dx", dx + "px");
-      pass.style.setProperty("--dy", dy + "px");
-    }
-    document.addEventListener("mousemove", (e) => {
-      if (arena.hidden) return;
-      const r = pass.getBoundingClientRect();
-      const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-      const vx = cx - e.clientX, vy = cy - e.clientY;
-      const dist = Math.max(1, Math.hypot(vx, vy));
-      if (dist < TRIGGER) {
-        const ux = vx / dist, uy = vy / dist;
-        const jitter = (Math.random() - 0.5) * 0.7;
-        const bound = Math.min(220, arena.clientWidth / 2 - 60);
-        let nx = dx + (ux - uy * jitter) * HOP;
-        let ny = dy + (uy + ux * jitter) * HOP * 0.6;
-        if (Math.abs(nx) > bound) nx = -nx * 0.5;
-        if (Math.abs(ny) > 60) ny = -ny * 0.5;
-        dx = nx; dy = ny;
-        apply(false);
-      } else if (dist > TRIGGER * 2.2 && (dx || dy)) {
-        dx = 0; dy = 0;
-        apply(true);
+    const RADIUS = 240;         // repulsion field radius
+    const PUSH = 16000;          // repulsion strength (px/s² at 1px)
+    const SPRING = 5.5;         // pull toward home
+    const DAMPING = 0.90;       // per-frame velocity retention
+    const MAX_SPEED = 1800;      // px/s cap
+    let x = 0, y = 0, vx = 0, vy = 0;
+    let cursor = null, last = performance.now();
+
+    document.addEventListener("mousemove", e => { cursor = { x: e.clientX, y: e.clientY }; });
+    document.addEventListener("mouseleave", () => { cursor = null; });
+
+    function step(now) {
+      const dt = Math.min(0.05, (now - last) / 1000); last = now;
+      if (!arena.hidden) {
+        const r = pass.getBoundingClientRect();
+        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+        let ax = -SPRING * x * 6, ay = -SPRING * y * 6;   // spring home
+        if (cursor) {
+          const dx = cx - cursor.x, dy = cy - cursor.y;
+          const d = Math.hypot(dx, dy);
+          if (d < RADIUS && d > 0.5) {
+            // Inverse-distance push, ramping to zero at the field edge.
+            const falloff = 1 - d / RADIUS;
+            const f = PUSH * (falloff + 0.35 * falloff * falloff) / Math.max(d, 26);
+            let ux = dx / d, uy = dy / d;
+            // Curve around the cursor: blend a tangential component in as it
+            // nears a side wall so it circles back toward the open center
+            // instead of getting pinned. Tangent direction points toward home.
+            const bxNow = arena.clientWidth / 2 - r.width / 2 - 4;
+            const nearWall = Math.max(0, Math.min(1, (Math.abs(x) - (bxNow - 200)) / 200));
+            if (nearWall > 0) {
+              // Perpendicular to the flee vector, choosing the sign that heads home.
+              let tx = -uy, ty = ux;
+              if (tx * (-x) + ty * (-y) < 0) { tx = -tx; ty = -ty; }
+              const k = nearWall * 2.2;
+              ux = ux + tx * k; uy = uy + ty * k;
+              const n = Math.hypot(ux, uy) || 1; ux /= n; uy /= n;
+            }
+            ax += ux * f * 60;
+            ay += uy * f * 60 * 0.75;
+          }
+        }
+        vx = (vx + ax * dt) * DAMPING;
+        vy = (vy + ay * dt) * DAMPING;
+        const sp = Math.hypot(vx, vy);
+        if (sp > MAX_SPEED) { vx *= MAX_SPEED / sp; vy *= MAX_SPEED / sp; }
+        x += vx * dt; y += vy * dt;
+        // Soft walls: keep it inside the arena.
+        const bx = arena.clientWidth / 2 - r.width / 2 - 4, by = 26;
+        if (x > bx) { x = bx; vx = -Math.abs(vx) * 0.4; }
+        if (x < -bx) { x = -bx; vx = Math.abs(vx) * 0.4; }
+        if (y > by) { y = by; vy = -Math.abs(vy) * 0.4; }
+        if (y < -by) { y = -by; vy = Math.abs(vy) * 0.4; }
+        pass.style.setProperty("--dx", x.toFixed(2) + "px");
+        pass.style.setProperty("--dy", y.toFixed(2) + "px");
       }
-    });
-    document.addEventListener("mouseleave", () => { dx = 0; dy = 0; apply(true); });
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
   })();
 
   // Live countdown + attended-minute dots. `until` is the phase deadline

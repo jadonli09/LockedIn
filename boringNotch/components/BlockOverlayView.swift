@@ -101,7 +101,7 @@ struct BlockOverlayView: View {
                 .padding(.top, compact ? 2 : 8)
 
                 RunawayPassButton(action: onPass)
-                    .frame(height: 44)
+                    .frame(height: 76)
             }
             .padding(24)
         }
@@ -116,25 +116,30 @@ struct BlockOverlayView: View {
 }
 
 /// The 2-minute pass, made impossible: a liquid-glass capsule that runs from
-/// the cursor. As the pointer approaches it springs away along the
-/// pointer→button vector; when the pointer backs off it eases home. Fast,
-/// slightly bouncy, and never catchable.
+/// the cursor with continuous physics — a damped particle pushed by an
+/// inverse-distance field around the pointer (harder the closer you get, so
+/// its speed adapts to the chase), pulled home by a soft spring, integrated
+/// every frame. Smooth, never a hop, never catchable.
 struct RunawayPassButton: View {
     let action: () -> Void
 
-    @State private var offset: CGSize = .zero
+    @State private var position: CGSize = .zero
+    @State private var velocity: CGSize = .zero
+    @State private var pointer: CGPoint? = nil
+    @State private var lastTick: Date = .init()
 
-    /// Pointer closer than this (from the button's *current* center) triggers a hop.
-    private let triggerRadius: CGFloat = 140
-    /// How far each hop moves it.
-    private let hop: CGFloat = 190
-    /// Cap so it never leaves the visible area of even a small window.
-    private let maxExcursion: CGFloat = 220
+    private let fieldRadius: CGFloat = 240
+    private let push: CGFloat = 16000
+    private let spring: CGFloat = 5.5
+    private let damping: CGFloat = 0.90
+    private let maxSpeed: CGFloat = 1800
+
+    private let ticker = Timer.publish(every: 1.0 / 60.0, on: .main, in: .common).autoconnect()
 
     var body: some View {
         GeometryReader { geo in
             let home = CGPoint(x: geo.size.width / 2, y: geo.size.height / 2)
-            let center = CGPoint(x: home.x + offset.width, y: home.y + offset.height)
+            let center = CGPoint(x: home.x + position.width, y: home.y + position.height)
 
             Button(action: action) {
                 Text("2-min pass")
@@ -146,46 +151,72 @@ struct RunawayPassButton: View {
             }
             .buttonStyle(.plain)
             .position(center)
-            .animation(.spring(response: 0.2, dampingFraction: 0.65), value: offset)
             .onContinuousHover(coordinateSpace: .local) { phase in
                 switch phase {
-                case .active(let p):
-                    flee(from: p, center: center, home: home)
-                case .ended:
-                    withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                        offset = .zero
-                    }
+                case .active(let p): pointer = p
+                case .ended: pointer = nil
                 }
+            }
+            .onReceive(ticker) { now in
+                integrate(now: now, center: center, arenaWidth: geo.size.width)
             }
             .frame(width: geo.size.width, height: geo.size.height)
             .contentShape(Rectangle())
         }
-        // The arena is the overlay's full width; the button roams inside it.
         .frame(maxWidth: .infinity)
     }
 
-    private func flee(from p: CGPoint, center: CGPoint, home: CGPoint) {
-        let dx = center.x - p.x
-        let dy = center.y - p.y
-        let dist = max(1, sqrt(dx * dx + dy * dy))
-        if dist < triggerRadius {
-            // Move directly away from the pointer, with a little sideways
-            // jitter so it doesn't just slide along one axis.
-            let ux = dx / dist, uy = dy / dist
-            let jitter = CGFloat.random(in: -0.35...0.35)
-            var nx = offset.width + (ux - uy * jitter) * hop
-            var ny = offset.height + (uy + ux * jitter) * hop * 0.6
-            // If it would leave the arena, bounce back toward home instead.
-            let bound = min(maxExcursion, home.x - 60)
-            if abs(nx) > bound { nx = -nx * 0.5 }
-            if abs(ny) > 60 { ny = -ny * 0.5 }
-            offset = CGSize(width: nx, height: ny)
-        } else if dist > triggerRadius * 2.2, offset != .zero {
-            // Pointer wandered off: come home.
-            withAnimation(.spring(response: 0.6, dampingFraction: 0.8)) {
-                offset = .zero
+    private func integrate(now: Date, center: CGPoint, arenaWidth: CGFloat) {
+        let dt = CGFloat(min(0.05, now.timeIntervalSince(lastTick)))
+        lastTick = now
+        guard dt > 0 else { return }
+
+        // Spring home.
+        var ax = -spring * position.width * 6
+        var ay = -spring * position.height * 6
+
+        // Inverse-distance repulsion, ramping to zero at the field edge.
+        if let p = pointer {
+            let dx = center.x - p.x, dy = center.y - p.y
+            let d = sqrt(dx * dx + dy * dy)
+            if d < fieldRadius, d > 0.5 {
+                let falloff = 1 - d / fieldRadius
+                let f = push * (falloff + 0.35 * falloff * falloff) / max(d, 26)
+                var ux = dx / d, uy = dy / d
+                // Curve around the cursor near a side wall — tangential
+                // component pointing home — so it circles back to the open
+                // center instead of getting pinned.
+                let bxNow = arenaWidth / 2 - 60
+                let nearWall = max(0, min(1, (abs(position.width) - (bxNow - 200)) / 200))
+                if nearWall > 0 {
+                    var tx = -uy, ty = ux
+                    if tx * (-position.width) + ty * (-position.height) < 0 { tx = -tx; ty = -ty }
+                    let k = nearWall * 2.2
+                    ux += tx * k; uy += ty * k
+                    let n = max(0.001, sqrt(ux * ux + uy * uy)); ux /= n; uy /= n
+                }
+                ax += ux * f * 60
+                ay += uy * f * 60 * 0.75
             }
         }
+
+        var vx = (velocity.width + ax * dt) * damping
+        var vy = (velocity.height + ay * dt) * damping
+        let speed = sqrt(vx * vx + vy * vy)
+        if speed > maxSpeed { vx *= maxSpeed / speed; vy *= maxSpeed / speed }
+
+        var x = position.width + vx * dt
+        var y = position.height + vy * dt
+
+        // Soft walls inside the arena.
+        let bx = arenaWidth / 2 - 60, by: CGFloat = 26
+        if x > bx { x = bx; vx = -abs(vx) * 0.4 }
+        if x < -bx { x = -bx; vx = abs(vx) * 0.4 }
+        if y > by { y = by; vy = -abs(vy) * 0.4 }
+        if y < -by { y = -by; vy = abs(vy) * 0.4 }
+
+        velocity = CGSize(width: vx, height: vy)
+        position = CGSize(width: x, height: y)
     }
 }
 

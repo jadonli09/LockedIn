@@ -154,3 +154,10 @@
 - Block page: .pass-arena + JS mousemove with the same math; glass via backdrop-filter + inset highlights; 0.18s overshoot cubic-bezier hop, 0.6s ease home.
 - VERIFIED with a puppeteer synthetic chase (40 steps, cursor always steering at the button's live position): min cursor–button gap 51px (button ~32px tall) — never catchable; after retreat, distance from home = 0px. First tuning (110/150) got within 21px mid-hop → widened.
 - DEBUG_SIMULATE_BLOCK now also honors the `-DEBUG_SIMULATE_BLOCK YES` launch arg (sandbox-proof).
+
+## 2026-08-17 — Iteration 14: runaway pass, from hops to physics
+- Operator: "erratic and glitchy". Root cause: discrete random hops. Replaced with continuous physics on both surfaces: a damped particle (velocity/position integrated per frame @60Hz — JS rAF on web, Timer.publish in SwiftUI) pushed by an inverse-distance repulsion field around the pointer (radius 240, push 16000, falloff-shaped so it ramps to zero at the edge), pulled home by a soft spring, damping 0.90, speed cap 1800px/s. No randomness anywhere.
+- Adaptive speed is emergent from the field: it flees at roughly the hand's speed plus a margin. Measured: creep 8px/frame → button ~7px/frame; sprint 22px/frame → ~21px/frame.
+- Cornering: near a side wall it blends in a tangential component pointing home (k up to 2.2 within 200px of the wall) so it curves around the cursor back to open space instead of getting pinned. Arena widened to 760px / 76px tall.
+- Measured with a puppeteer chase steering at the LIVE button position at 60Hz: min gap 20px (moderate), 13px (fast), 28px (slow) — never caught; per-frame movement max ~45–49px (old hops were 150+); returns home to ≤2px. Trajectory dumps drove each tuning step (found the wall-pin, then found the "matching pace at constant 56px gap" plateau that motivated the stronger far-field).
+- SwiftUI version uses identical constants/math; verified by construction (live display capture unreliable this session).
