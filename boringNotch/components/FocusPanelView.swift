@@ -23,6 +23,7 @@ struct FocusPanelView: View {
     @Default(.lastFocusPreset) var lastPreset
     @Default(.focusSoundVolume) var soundVolume
     @Default(.lastFocusSound) var lastSound
+    @Default(.showSoundControls) var showSoundControls
 
     @State private var endHoldProgress: CGFloat = 0
     @State private var isHoldingEnd = false
@@ -277,18 +278,20 @@ struct FocusPanelView: View {
 
             blockControlButton
 
-            if sound.isPlaying {
-                Slider(value: Binding(
-                    get: { soundVolume },
-                    set: { sound.volume = $0 }
-                ), in: 0...1)
-                .controlSize(.mini)
-                .tint(.white.opacity(0.5))
-                .frame(width: 52)
-                .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .trailing)))
-            }
+            if showSoundControls {
+                if sound.isPlaying {
+                    Slider(value: Binding(
+                        get: { soundVolume },
+                        set: { sound.volume = $0 }
+                    ), in: 0...1)
+                    .controlSize(.mini)
+                    .tint(.white.opacity(0.5))
+                    .frame(width: 52)
+                    .transition(.opacity.combined(with: .scale(scale: 0.9, anchor: .trailing)))
+                }
 
-            soundButton
+                soundButton
+            }
 
             if !mediaActive {
                 resumeMusicButton

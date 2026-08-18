@@ -28,6 +28,7 @@ struct SettingsView: View {
     @Default(.blockedDomains) var blockedDomains
     @Default(.lastFocusPreset) var lastPreset
     @Default(.mediaController) var mediaController
+    @Default(.showSoundControls) var showSoundControls
 
     @State private var newDomain: String = ""
 
@@ -122,6 +123,13 @@ struct SettingsView: View {
                     Button("Add") { addDomain() }
                         .disabled(newDomain.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
+            }
+
+            Section("Focus sounds") {
+                Toggle("Show sound control in the island", isOn: $showSoundControls)
+                Text("Brown noise, rain, and ocean loops. Off keeps the island minimal.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
             }
 
             Section("Media") {

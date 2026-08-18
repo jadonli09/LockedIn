@@ -9,6 +9,7 @@
     --notch: #000;
     --accent: #E8A87C; /* overridden by ?accent= */
     --text: #FFF;
+    --hair: rgba(255, 255, 255, 0.07);
   }
   * { box-sizing: border-box; }
   html, body {
@@ -22,15 +23,31 @@
   body.relock { animation: fadein 3s ease-out; }
   @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 
-  /* The signature: the island itself, at the top of the page where it lives,
-     with the minutes numeral tucked at its right edge — same as the notch. */
+  /* Ground the composition: a hairline grid, barely there and vignetted to
+     the center, so the black reads as a surface rather than a void. */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(var(--hair) 1px, transparent 1px),
+      linear-gradient(90deg, var(--hair) 1px, transparent 1px);
+    background-size: 96px 96px;
+    background-position: center top;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 20%, transparent 100%);
+            mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 20%, transparent 100%);
+    opacity: 0.6;
+    pointer-events: none;
+  }
+
+  /* The signature: the island itself at the top, minutes numeral at its
+     right edge, and a plumb line dropping from it to the countdown — the
+     block page hangs from the notch. */
   .island-row {
     position: fixed;
     top: 0;
     left: 50%;
     transform: translateX(-50%);
-    display: flex;
-    align-items: center;
   }
   .island {
     width: 196px;
@@ -38,12 +55,12 @@
     background: var(--notch);
     border-bottom-left-radius: 14px;
     border-bottom-right-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.09);
     border-top: none;
   }
   .island-minutes {
     position: absolute;
-    right: -30px;
+    right: -34px;
     top: 0;
     height: 34px;
     display: flex;
@@ -53,6 +70,16 @@
     font-variant-numeric: tabular-nums;
     color: var(--accent);
   }
+  .plumb {
+    position: absolute;
+    left: 50%;
+    top: 34px;
+    width: 1px;
+    height: 120px;
+    background: linear-gradient(rgba(255,255,255,0.18), var(--hair));
+    transform: translateX(-0.5px);
+  }
+
 
   .stack {
     height: 100%;
@@ -60,9 +87,10 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 26px;
+    gap: 0;
     text-align: center;
-    animation: settle 0.6s cubic-bezier(0.2, 0.9, 0.3, 1);
+    animation: settle 0.7s cubic-bezier(0.2, 0.9, 0.3, 1);
+    padding-top: 56px;
   }
   @keyframes settle {
     from { opacity: 0; transform: translateY(10px); }
@@ -70,62 +98,95 @@
   }
 
   .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     font-size: 12px;
     font-weight: 500;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.4);
-    margin: 0;
+    color: rgba(255, 255, 255, 0.45);
+    margin: 0 0 22px;
+  }
+  .eyebrow .dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent);
   }
 
   .time {
-    font-size: 96px;
+    font-size: clamp(120px, 15vw, 176px);
     font-weight: 600;
-    line-height: 1;
+    line-height: 0.95;
     font-variant-numeric: tabular-nums;
-    letter-spacing: 0.01em;
+    letter-spacing: -0.02em;
     margin: 0;
   }
+  .phase {
+    margin: 18px 0 0;
+    font-size: 12px;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    color: rgba(255, 255, 255, 0.4);
+  }
 
-  /* One dot per minute of the phase; attended minutes fill in accent. */
-  .dots {
+  /* Attended-minute tally: dots grouped in fives, like a tally mark, so the
+     row reads at a glance. */
+  .tally {
+    margin: 34px 0 0;
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 9px;
+    gap: 12px;
   }
-  .dots .row {
-    display: flex;
-    gap: 8px;
+  .tally .rows { display: flex; flex-direction: column; gap: 10px; }
+  .tally .row { display: flex; gap: 14px; }
+  .tally .group { display: flex; gap: 6px; }
+  .tally .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: rgba(255, 255, 255, 0.13);
+    transition: background 0.4s ease, transform 0.4s ease;
   }
-  .dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.14);
-  }
-  .dot.attended { background: var(--accent); }
+  .tally .dot.attended { background: var(--accent); }
+  .tally .dot.now { transform: scale(1.35); box-shadow: 0 0 0 3px rgba(255,255,255,0.06); }
   .attended-line {
     font-size: 11px;
     font-weight: 500;
-    letter-spacing: 0.12em;
+    letter-spacing: 0.14em;
     color: rgba(255, 255, 255, 0.35);
   }
 
+  .actions {
+    margin-top: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
   a.primary {
-    display: inline-block;
-    background: rgba(255, 255, 255, 0.92);
-    color: rgba(0, 0, 0, 0.85);
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.94);
+    color: rgba(0, 0, 0, 0.88);
     font-size: 15px;
     font-weight: 500;
-    padding: 11px 26px;
+    padding: 12px 22px 12px 26px;
     border-radius: 999px;
     text-decoration: none;
-    margin-top: 8px;
+    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+    transition: transform 0.15s ease;
   }
+  a.primary:hover { transform: translateY(-1px); }
   a.primary:active { transform: scale(0.97); }
+  a.primary .arrow { opacity: 0.55; font-size: 14px; }
+  .hint {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.28);
+    letter-spacing: 0.02em;
+  }
+
   /* The 2-minute pass: a liquid-glass capsule that runs from the cursor.
-     Position is driven by JS; the transition is the spring-ish hop. */
+     Position is driven by JS every frame. */
   .pass-arena {
     position: relative;
     width: min(760px, 94vw);
@@ -156,7 +217,6 @@
     user-select: none;
   }
 
-
   @media (prefers-reduced-motion: reduce) {
     .stack { animation: none; }
   }
@@ -166,15 +226,20 @@
 <div class="island-row">
   <div class="island"></div>
   <div class="island-minutes" id="island-minutes"></div>
+  <div class="plumb"></div>
 </div>
 <div class="stack">
-  <p class="eyebrow" id="domain-label">Locked in</p>
+  <p class="eyebrow"><span class="dot"></span><span id="domain-label">Locked in</span></p>
   <p class="time" id="time">—</p>
-  <div class="dots">
-    <div id="dot-rows"></div>
+  <p class="phase">FOCUS · REMAINING</p>
+  <div class="tally">
+    <div class="rows" id="dot-rows"></div>
     <div class="attended-line" id="attended-line"></div>
   </div>
-  <a class="primary" href="lockedin://close">Stay locked in</a>
+  <div class="actions">
+    <a class="primary" href="lockedin://close"><span>Stay locked in</span><span class="arrow">↩</span></a>
+    <span class="hint" id="hint"></span>
+  </div>
   <div class="pass-arena" id="pass-arena" hidden>
     <a class="pass" id="pass" href="#">2-min pass</a>
   </div>
@@ -197,6 +262,7 @@
   const domain = params.get("domain");
   if (domain) {
     document.getElementById("domain-label").textContent = domain;
+    document.getElementById("hint").textContent = "closes this tab";
     document.getElementById("pass-arena").hidden = false;
     const pass = document.getElementById("pass");
     pass.href = "lockedin://pass?domain=" + encodeURIComponent(domain)
@@ -204,45 +270,34 @@
       + "&b=" + encodeURIComponent(browser);
   }
 
-  // Runaway pass, continuous physics: the button is a damped particle
-  // pushed away by an inverse-distance field around the cursor (harder the
-  // closer you get — the speed adapts to how hard you chase), pulled home
-  // by a soft spring, and integrated every frame. No hops, no jitter.
+  // Runaway pass, continuous physics: a damped particle pushed away by an
+  // inverse-distance field around the cursor (harder the closer you get —
+  // speed adapts to the chase), pulled home by a soft spring, integrated
+  // every frame. Near a side wall it curves back toward open space.
   (function () {
     const arena = document.getElementById("pass-arena");
     const pass = document.getElementById("pass");
-    const RADIUS = 240;         // repulsion field radius
-    const PUSH = 16000;          // repulsion strength (px/s² at 1px)
-    const SPRING = 5.5;         // pull toward home
-    const DAMPING = 0.90;       // per-frame velocity retention
-    const MAX_SPEED = 1800;      // px/s cap
+    const RADIUS = 240, PUSH = 16000, SPRING = 5.5, DAMPING = 0.90, MAX_SPEED = 1800;
     let x = 0, y = 0, vx = 0, vy = 0;
     let cursor = null, last = performance.now();
-
     document.addEventListener("mousemove", e => { cursor = { x: e.clientX, y: e.clientY }; });
     document.addEventListener("mouseleave", () => { cursor = null; });
-
     function step(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
       if (!arena.hidden) {
         const r = pass.getBoundingClientRect();
         const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        let ax = -SPRING * x * 6, ay = -SPRING * y * 6;   // spring home
+        let ax = -SPRING * x * 6, ay = -SPRING * y * 6;
         if (cursor) {
           const dx = cx - cursor.x, dy = cy - cursor.y;
           const d = Math.hypot(dx, dy);
           if (d < RADIUS && d > 0.5) {
-            // Inverse-distance push, ramping to zero at the field edge.
             const falloff = 1 - d / RADIUS;
             const f = PUSH * (falloff + 0.35 * falloff * falloff) / Math.max(d, 26);
             let ux = dx / d, uy = dy / d;
-            // Curve around the cursor: blend a tangential component in as it
-            // nears a side wall so it circles back toward the open center
-            // instead of getting pinned. Tangent direction points toward home.
             const bxNow = arena.clientWidth / 2 - r.width / 2 - 4;
             const nearWall = Math.max(0, Math.min(1, (Math.abs(x) - (bxNow - 200)) / 200));
             if (nearWall > 0) {
-              // Perpendicular to the flee vector, choosing the sign that heads home.
               let tx = -uy, ty = ux;
               if (tx * (-x) + ty * (-y) < 0) { tx = -tx; ty = -ty; }
               const k = nearWall * 2.2;
@@ -258,7 +313,6 @@
         const sp = Math.hypot(vx, vy);
         if (sp > MAX_SPEED) { vx *= MAX_SPEED / sp; vy *= MAX_SPEED / sp; }
         x += vx * dt; y += vy * dt;
-        // Soft walls: keep it inside the arena.
         const bx = arena.clientWidth / 2 - r.width / 2 - 4, by = 26;
         if (x > bx) { x = bx; vx = -Math.abs(vx) * 0.4; }
         if (x < -bx) { x = -bx; vx = Math.abs(vx) * 0.4; }
@@ -272,7 +326,7 @@
     requestAnimationFrame(step);
   })();
 
-  // Live countdown + attended-minute dots. `until` is the phase deadline
+  // Live countdown + attended-minute tally. `until` is the phase deadline
   // (ms epoch); `duration` is the phase length in seconds.
   const timeEl = document.getElementById("time");
   const until = parseInt(params.get("until") || "0", 10);
@@ -280,16 +334,16 @@
   const totalMinutes = Math.max(1, Math.round(duration / 60));
 
   const rowsEl = document.getElementById("dot-rows");
-  rowsEl.className = "";
   const dots = [];
   for (let start = 0; start < totalMinutes; start += 30) {
     const row = document.createElement("div");
     row.className = "row";
-    if (start > 0) row.style.marginTop = "8px";
+    let group = null;
     for (let m = start; m < Math.min(start + 30, totalMinutes); m++) {
+      if ((m - start) % 5 === 0) { group = document.createElement("div"); group.className = "group"; row.appendChild(group); }
       const dot = document.createElement("div");
       dot.className = "dot";
-      row.appendChild(dot);
+      group.appendChild(dot);
       dots.push(dot);
     }
     rowsEl.appendChild(row);
@@ -308,7 +362,10 @@
 
     if (duration > 0) {
       const attended = Math.min(totalMinutes, Math.floor(((duration - secs) / duration) * totalMinutes));
-      dots.forEach((dot, i) => dot.classList.toggle("attended", i < attended));
+      dots.forEach((dot, i) => {
+        dot.classList.toggle("attended", i < attended);
+        dot.classList.toggle("now", i === attended);
+      });
       document.getElementById("attended-line").textContent =
         `${attended} OF ${totalMinutes} MINUTES ATTENDED`;
     }

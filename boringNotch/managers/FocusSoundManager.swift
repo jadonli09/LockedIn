@@ -35,6 +35,9 @@ enum FocusSound: String, CaseIterable, Identifiable, Defaults.Serializable {
 }
 
 extension Defaults.Keys {
+    /// Show the focus-sound control in the island. Off hides it entirely; the
+    /// engine (and Settings) still exist.
+    static let showSoundControls = Key<Bool>("showSoundControls", default: false)
     static let lastFocusSound = Key<FocusSound>("lastFocusSound", default: .brownNoise)
     static let focusSoundVolume = Key<Double>("focusSoundVolume", default: 0.6)
 }
