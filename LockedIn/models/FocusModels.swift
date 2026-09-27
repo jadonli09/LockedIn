@@ -53,8 +53,34 @@ struct FocusSessionState: Codable {
     var pausedAt: Date?
     /// Completed focus phases in this session, drives the every-4th long break.
     var completedFocusCount: Int = 0
+    /// Seconds the presence monitor saw the user away from the desk this session.
+    /// Informational only — away time is already excluded by the backdated pause.
+    var awayTotal: TimeInterval = 0
 
     var isPaused: Bool { pausedAt != nil }
+
+    init(preset: FocusPreset, phase: FocusPhaseKind, phaseStart: Date, phaseDuration: TimeInterval,
+         pausedAt: Date?, completedFocusCount: Int = 0, awayTotal: TimeInterval = 0) {
+        self.preset = preset
+        self.phase = phase
+        self.phaseStart = phaseStart
+        self.phaseDuration = phaseDuration
+        self.pausedAt = pausedAt
+        self.completedFocusCount = completedFocusCount
+        self.awayTotal = awayTotal
+    }
+
+    /// Hand-written so sessions persisted before `awayTotal` existed still decode.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        preset = try c.decode(FocusPreset.self, forKey: .preset)
+        phase = try c.decode(FocusPhaseKind.self, forKey: .phase)
+        phaseStart = try c.decode(Date.self, forKey: .phaseStart)
+        phaseDuration = try c.decode(TimeInterval.self, forKey: .phaseDuration)
+        pausedAt = try c.decodeIfPresent(Date.self, forKey: .pausedAt)
+        completedFocusCount = try c.decodeIfPresent(Int.self, forKey: .completedFocusCount) ?? 0
+        awayTotal = try c.decodeIfPresent(TimeInterval.self, forKey: .awayTotal) ?? 0
+    }
 
     // MARK: - Timestamp arithmetic
 

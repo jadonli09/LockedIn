@@ -74,12 +74,22 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         cleanupWindows()
     }
 
+    /// Face unlock needs the island alive on the lock screen even when the
+    /// user hasn't opted into "show on lock screen" generally.
+    @MainActor
+    private var wantsIslandOnLockScreen: Bool {
+        Defaults[.showOnLockScreen] || FaceUnlockCoordinator.shared.wantsLockScreenPresence
+    }
+
     @MainActor
     func onScreenLocked(_ notification: Notification) {
         isScreenLocked = true
-        if !Defaults[.showOnLockScreen] {
+        if !wantsIslandOnLockScreen {
             cleanupWindows()
         } else {
+            if window == nil && !Defaults[.showOnAllDisplays] {
+                adjustWindowPosition(changeAlpha: true)
+            }
             enableSkyLightOnAllWindows()
         }
     }
@@ -88,6 +98,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func onScreenUnlocked(_ notification: Notification) {
         isScreenLocked = false
         if !Defaults[.showOnLockScreen] {
+            disableSkyLightOnAllWindows()
             adjustWindowPosition(changeAlpha: true)
         } else {
             disableSkyLightOnAllWindows()
@@ -254,6 +265,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         FocusBehaviorCoordinator.shared.start()
         AppBlocker.shared.start()
         BrowserBlocker.shared.start()
+        FaceUnlockCoordinator.shared.start()
+        PresenceMonitor.shared.start()
 
         // ⌥⌘L starts or resumes instantly; pausing costs a 5-second hold on
         // the island (it unlocks blocked apps), so the hotkey never pauses.

@@ -18,12 +18,13 @@ import SwiftUI
 struct FocusClosedContent: View {
     @ObservedObject var focus = FocusSessionManager.shared
     @ObservedObject var passCenter = PassCenter.shared
+    @ObservedObject var presence = PresenceMonitor.shared
 
     let notchWidth: CGFloat
     let notchHeight: CGFloat
 
     private var sideWidth: CGFloat {
-        focus.transientEvent != nil ? 80 : 44
+        (focus.transientEvent != nil || presence.isAway) ? 80 : 44
     }
 
     var body: some View {
@@ -39,6 +40,16 @@ struct FocusClosedContent: View {
                     }
                     .foregroundStyle(.white.opacity(0.75))
                     .transition(.opacity.combined(with: .move(edge: .trailing)))
+                } else if presence.isAway {
+                    // Persistent while the presence monitor holds the session paused.
+                    HStack(spacing: 5) {
+                        Image(systemName: "person.slash")
+                            .font(.system(size: 9, weight: .semibold))
+                        Text("Away")
+                            .font(.system(size: 11, weight: .medium, design: .rounded))
+                    }
+                    .foregroundStyle(.white.opacity(0.5))
+                    .transition(.opacity)
                 }
             }
             .frame(width: sideWidth, alignment: .center)
@@ -49,7 +60,9 @@ struct FocusClosedContent: View {
                 .frame(width: notchWidth + 24)
 
             // Right: pass countdown while one is active, else session minutes.
-            Group {
+            // The green dot leads whenever the camera is on.
+            HStack(spacing: 6) {
+                CameraActiveDot()
                 if let pass = passCenter.soonest {
                     Text(passCountdownText(pass))
                         .font(.system(size: 11, weight: .medium, design: .rounded))
@@ -69,6 +82,7 @@ struct FocusClosedContent: View {
         }
         .frame(height: notchHeight, alignment: .center)
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.transientEvent != nil)
+        .animation(.spring(response: 0.42, dampingFraction: 0.8), value: presence.isAway)
     }
 
     private func passCountdownText(_ pass: ActivePass) -> String {

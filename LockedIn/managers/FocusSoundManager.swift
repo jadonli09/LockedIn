@@ -93,6 +93,23 @@ final class FocusSoundManager: ObservableObject {
         isPlaying ? stop() : start()
     }
 
+    /// True when the presence monitor paused the sound and it should come back.
+    private var suspendedForAbsence = false
+
+    /// Presence monitor: the user left, fade the sound out but remember to bring it back.
+    func suspendForAbsence() {
+        guard isPlaying else { return }
+        player.stop()
+        isPlaying = false
+        suspendedForAbsence = true
+    }
+
+    func resumeFromAbsence() {
+        guard suspendedForAbsence else { return }
+        suspendedForAbsence = false
+        start()
+    }
+
     /// Picks a sound (from the wave button's context menu); if one is already
     /// playing, crossfades straight into the new choice.
     func select(_ choice: FocusSound) {
@@ -112,5 +129,6 @@ final class FocusSoundManager: ObservableObject {
         player.stop()
         isPlaying = false
         ducked = false
+        suspendedForAbsence = false
     }
 }

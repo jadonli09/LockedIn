@@ -139,6 +139,37 @@ class LockedInHelper: NSObject, LockedInHelperProtocol {
         reply(false)
     }
 
+    // MARK: - Face unlock (lock-screen keystrokes)
+
+    /// Runs off the XPC queue because the keystroke sequence sleeps between
+    /// events (~12 ms each); the reply arrives once Return has been posted.
+    @objc func typeUnlockPassword(_ password: Data, with reply: @escaping (Bool, String?) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            var bytes = password
+            defer { bytes.resetBytes(in: 0..<bytes.count) }
+            // Both gates are re-checked here, in the process that types,
+            // rather than trusted from the caller.
+            guard AXIsProcessTrusted() else {
+                faceUnlockLog.error("refused: helper lacks Accessibility")
+                reply(false, KeystrokeError.accessibilityNotGranted.localizedDescription)
+                return
+            }
+            guard KeystrokeInjector.isScreenActuallyLocked() else {
+                faceUnlockLog.error("refused: screen not locked")
+                reply(false, KeystrokeError.screenNotLocked.localizedDescription)
+                return
+            }
+            do {
+                try KeystrokeInjector.typeAndReturn(bytes)
+                faceUnlockLog.info("typed \(bytes.count, privacy: .public) bytes + Return")
+                reply(true, nil)
+            } catch {
+                faceUnlockLog.error("typing failed: \(error.localizedDescription, privacy: .public)")
+                reply(false, error.localizedDescription)
+            }
+        }
+    }
+
     // MARK: - Private helpers for DisplayServices / IOKit access
     private func displayServicesGetBrightness(displayID: CGDirectDisplayID, out: inout Float) -> Bool {
         guard let sym = dlsym(DisplayServicesHandle.handle, "DisplayServicesGetBrightness") else { return false }

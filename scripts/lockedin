@@ -1,12 +1,21 @@
 #!/bin/bash
 # LockedIn control: lockedin start|stop|restart|build|logs
-set -e
+set -eo pipefail
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
 APP="$REPO/build/DerivedData/Build/Products/Debug/LockedIn.app"
 
+# Quit politely; if the app is wedged (e.g. behind a Keychain prompt) and
+# ignores the Apple Event, kill it so `open` really launches the new build.
+quit_app() {
+  osascript -e 'with timeout of 5 seconds' -e 'quit app "LockedIn"' -e 'end timeout' 2>/dev/null || true
+  for _ in 1 2 3 4 5; do pgrep -x LockedIn >/dev/null || return 0; sleep 0.5; done
+  pkill -9 -x LockedIn 2>/dev/null || true
+  sleep 0.5
+}
+
 case "${1:-restart}" in
   stop)
-    osascript -e 'quit app "LockedIn"' 2>/dev/null || true
+    quit_app
     echo "LockedIn stopped."
     ;;
   start)
@@ -14,8 +23,7 @@ case "${1:-restart}" in
     echo "LockedIn started."
     ;;
   restart)
-    osascript -e 'quit app "LockedIn"' 2>/dev/null || true
-    sleep 1
+    quit_app
     open "$APP"
     echo "LockedIn restarted."
     ;;
@@ -24,18 +32,19 @@ case "${1:-restart}" in
     xcodebuild -scheme LockedIn -configuration Debug build \
       -derivedDataPath build/DerivedData \
       CODE_SIGN_IDENTITY=- CODE_SIGNING_REQUIRED=NO | tail -2
-    # Re-sign with the stable identity WITHOUT dropping the entitlements Xcode
-    # applied (a bare --deep re-sign strips them and the app runs unsandboxed).
-    ENT=$(mktemp).plist
-    codesign -d --entitlements :"$ENT" "$APP" 2>/dev/null || true
-    if [ -s "$ENT" ]; then
-      codesign --force --deep -s "LockedIn Dev" --entitlements "$ENT" "$APP"
-    else
-      codesign --force --deep -s "LockedIn Dev" "$APP"
-    fi
-    rm -f "$ENT"
-    osascript -e 'quit app "LockedIn"' 2>/dev/null || true
-    sleep 1
+    # Re-sign with the stable identity, inside-out, each bundle with its OWN
+    # entitlements. Never `--deep --entitlements`: that stamps the app's
+    # sandbox onto the XPC helper, which then can't prompt for Accessibility
+    # or write its Keychain item ("User interaction is not allowed").
+    for FW in "$APP"/Contents/Frameworks/*.framework; do
+      [ -e "$FW" ] && codesign --force -s "LockedIn Dev" "$FW"
+    done
+    HELPER="$APP/Contents/XPCServices/LockedInHelper.xpc"
+    codesign --force -s "LockedIn Dev" \
+      --entitlements "$REPO/LockedInHelper/LockedInHelper.entitlements" "$HELPER"
+    codesign --force -s "LockedIn Dev" \
+      --entitlements "$REPO/LockedIn/LockedIn.entitlements" "$APP"
+    quit_app
     open "$APP"
     echo "LockedIn rebuilt and restarted."
     ;;

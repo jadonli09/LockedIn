@@ -17,6 +17,9 @@ struct ContentView: View {
     @ObservedObject var focus = FocusSessionManager.shared
     @ObservedObject var passCenter = PassCenter.shared
     @ObservedObject var interaction = PanelInteractionState.shared
+    @ObservedObject var faceUnlock = FaceUnlockCoordinator.shared
+    @ObservedObject var identityGate = IdentityGate.shared
+    @ObservedObject var camera = CameraManager.shared
     @Default(.focusAccent) var accent
     @Default(.showRemainingMinutes) var showRemainingMinutes
 
@@ -37,10 +40,18 @@ struct ContentView: View {
                 : cornerRadiusInsets.closed.top
     }
 
+    /// A face presentation (lock-screen unlock or identity gate) grows the
+    /// closed island into the Dynamic-Island-style Face ID card.
+    private var faceExpanded: Bool {
+        vm.notchState == .closed && (faceUnlock.phase.isPresenting || identityGate.phase != .idle)
+    }
+
     private var currentNotchShape: NotchShape {
         NotchShape(
             topCornerRadius: topCornerRadius,
-            bottomCornerRadius: ((vm.notchState == .open) && Defaults[.cornerRadiusScaling])
+            bottomCornerRadius: faceExpanded
+                ? FaceIsland.bottomCornerRadius
+                : ((vm.notchState == .open) && Defaults[.cornerRadiusScaling])
                 ? cornerRadiusInsets.opened.bottom
                 : cornerRadiusInsets.closed.bottom
         )
@@ -98,6 +109,7 @@ struct ContentView: View {
 
                         return view
                             .animation(vm.notchState == .open ? openAnimation : closeAnimation, value: vm.notchState)
+                            .animation(FaceIsland.spring, value: faceExpanded)
                             .animation(.smooth, value: gestureProgress)
                     }
                     .contentShape(Rectangle())
@@ -188,8 +200,13 @@ struct ContentView: View {
                     Spacer()
                 } else if vm.notchState == .open {
                     Rectangle().fill(.clear).frame(width: vm.closedNotchSize.width - 20, height: max(24, vm.effectiveClosedNotchHeight))
+                } else if faceExpanded {
+                    FaceClosedContent(
+                        notchWidth: vm.closedNotchSize.width,
+                        notchHeight: max(24, vm.effectiveClosedNotchHeight)
+                    )
                 } else if !vm.hideOnClosed,
-                          (focus.hasSession && showRemainingMinutes) || focus.transientEvent != nil || passCenter.soonest != nil {
+                          (focus.hasSession && showRemainingMinutes) || focus.transientEvent != nil || passCenter.soonest != nil || camera.isRunning {
                     FocusClosedContent(
                         notchWidth: vm.closedNotchSize.width,
                         notchHeight: vm.effectiveClosedNotchHeight
@@ -216,6 +233,7 @@ struct ContentView: View {
     }
 
     private func doOpen() {
+        if faceUnlock.isScreenLocked { return }
         withAnimation(animationSpring) {
             vm.open()
         }
@@ -225,6 +243,8 @@ struct ContentView: View {
 
     private func handleHover(_ hovering: Bool) {
         if coordinator.firstLaunch { return }
+        // On the lock screen the island only ever shows the scan state.
+        if faceUnlock.isScreenLocked { return }
         hoverTask?.cancel()
 
         if hovering {

@@ -28,11 +28,18 @@ final class FocusSessionManager: ObservableObject {
     @Published private(set) var endPulse: Int = 0
     /// True during the 3s grace animation between phases.
     @Published private(set) var inGrace: Bool = false
-    /// Set when the pause came from the idle monitor, so input can auto-resume.
+    /// Set when the pause came from the idle or presence monitor, so input can auto-resume.
     private(set) var pausedAutomatically: Bool = false
 
+    enum AutoPauseReason {
+        case idle
+        case presence
+    }
+    /// Which monitor paused the session, while `pausedAutomatically` is true.
+    private(set) var autoPauseReason: AutoPauseReason?
+
     enum TransientEvent {
-        case started, paused, resumed, reset, ended
+        case started, paused, resumed, reset, ended, away, back
 
         var label: String {
             switch self {
@@ -41,6 +48,8 @@ final class FocusSessionManager: ObservableObject {
             case .resumed: "Resumed"
             case .reset: "Reset"
             case .ended: "Ended"
+            case .away: "Away"
+            case .back: "Welcome back"
             }
         }
 
@@ -50,6 +59,8 @@ final class FocusSessionManager: ObservableObject {
             case .paused: "pause.fill"
             case .reset: "arrow.counterclockwise"
             case .ended: "checkmark"
+            case .away: "person.slash"
+            case .back: "person.fill.checkmark"
             }
         }
     }
@@ -59,7 +70,10 @@ final class FocusSessionManager: ObservableObject {
     @Published private(set) var transientEvent: TransientEvent?
     private var transientTask: Task<Void, Never>?
 
-    private func announce(_ event: TransientEvent) {
+    /// Seconds the presence monitor saw the user away this session.
+    var awayTotal: TimeInterval { state?.awayTotal ?? 0 }
+
+    func announce(_ event: TransientEvent) {
         withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
             transientEvent = event
         }
@@ -116,6 +130,7 @@ final class FocusSessionManager: ObservableObject {
     func pause() {
         guard var s = state, !s.isPaused else { return }
         pausedAutomatically = false
+        autoPauseReason = nil
         s.pause(at: Date())
         state = s
         persist()
@@ -125,9 +140,10 @@ final class FocusSessionManager: ObservableObject {
 
     /// Idle auto-pause. Backdates the pause by the idle interval so idle time
     /// never counts toward the session — 25 minutes means 25 attended minutes.
-    func autoPause(idleFor idleSeconds: TimeInterval) {
+    func autoPause(idleFor idleSeconds: TimeInterval, reason: AutoPauseReason = .idle) {
         guard var s = state, !s.isPaused else { return }
         pausedAutomatically = true
+        autoPauseReason = reason
         s.pause(at: Date().addingTimeInterval(-idleSeconds))
         state = s
         persist()
@@ -137,6 +153,7 @@ final class FocusSessionManager: ObservableObject {
     func resume() {
         guard var s = state, s.isPaused else { return }
         pausedAutomatically = false
+        autoPauseReason = nil
         s.resume(at: Date())
         state = s
         persist()
@@ -151,6 +168,7 @@ final class FocusSessionManager: ObservableObject {
         graceTask?.cancel()
         inGrace = false
         pausedAutomatically = false
+        autoPauseReason = nil
         s.phaseStart = Date()
         s.pausedAt = nil
         state = s
@@ -187,6 +205,14 @@ final class FocusSessionManager: ObservableObject {
     /// Pulse the island without a chime — physical feedback for the global hotkey.
     func visualPulse() {
         endPulse += 1
+    }
+
+    /// Presence monitor bookkeeping: adds one absence to the session's away total.
+    func recordAway(seconds: TimeInterval) {
+        guard var s = state, seconds > 0 else { return }
+        s.awayTotal += seconds
+        state = s
+        persist()
     }
 
     func endSession() {

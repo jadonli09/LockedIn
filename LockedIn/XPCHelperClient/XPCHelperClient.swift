@@ -241,6 +241,23 @@ final class XPCHelperClient: NSObject {
             return false
         }
     }
+
+    // MARK: - Face unlock (the app holds the password; the helper types it)
+
+    /// "Authenticated — unlock now." The helper re-checks Accessibility and the
+    /// real CGSession lock state before typing anything.
+    nonisolated func typeUnlockPassword(_ password: Data) async -> (Bool, String?) {
+        do {
+            let service = await MainActor.run { ensureRemoteService() }
+            return try await service.withContinuation { service, continuation in
+                service.typeUnlockPassword(password) { ok, message in
+                    continuation.resume(returning: (ok, message))
+                }
+            }
+        } catch {
+            return (false, error.localizedDescription)
+        }
+    }
 }
 
 extension Notification.Name {

@@ -12,6 +12,8 @@ At rest, the island is invisible: pure `#000`, flush with the hardware notch, no
 
 Invisible session behaviors: display keep-awake during focus periods, idle auto-pause (idle time never counts — 25 minutes means 25 attended minutes), and optional Auto-DND via two Shortcuts.
 
+**Face ID (opt-in, off by default)** — on-device face recognition ported from [Glance](https://github.com/jonnyoo/glance) (MIT): unlock the Mac from the lock screen with a scan in the notch (the unsandboxed helper types your stored password), auto-pause a session when you leave the desk and resume when you're back, and require your face to end a session early. Needs Camera access, Accessibility for `LockedInHelper`, an enrolled face, and your Mac password entered once in Settings → Face ID. A green dot in the island means the camera is on. Not as secure as Touch ID: a photo or phone held up is rejected, a replayed video may not be.
+
 ## Building
 
 ```sh

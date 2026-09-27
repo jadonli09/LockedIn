@@ -50,7 +50,9 @@ struct BlockControlView: View {
                         Text(appName(for: bundleID))
                         Spacer()
                         removeButton {
-                            blockedBundleIDs.removeAll { $0 == bundleID }
+                            IdentityGate.shared.performGated {
+                                blockedBundleIDs.removeAll { $0 == bundleID }
+                            }
                         }
                     }
                 }
@@ -70,7 +72,9 @@ struct BlockControlView: View {
                         Text(domain)
                         Spacer()
                         removeButton {
-                            blockedDomains.removeAll { $0 == domain }
+                            IdentityGate.shared.performGated {
+                                blockedDomains.removeAll { $0 == domain }
+                            }
                         }
                     }
                 }

@@ -20,6 +20,8 @@
 		<key>NSAllowsArbitraryLoads</key>
 		<true/>
 	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>LockedIn uses the camera to recognize your face — to unlock the Mac from the lock screen, to pause a focus session when you step away, and to confirm it’s you before ending one early. Frames are processed on-device and never stored.</string>
 	<key>NSAppleEventsUsageDescription</key>
 	<string>LockedIn reads the active browser tab’s address during focus sessions to block distracting websites.</string>
 	<key>NSHumanReadableCopyright</key>

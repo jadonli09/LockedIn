@@ -90,7 +90,9 @@ struct SettingsView: View {
                         Text(appDisplayName(for: bundleID))
                         Spacer()
                         Button(role: .destructive) {
-                            blockedBundleIDs.removeAll { $0 == bundleID }
+                            IdentityGate.shared.performGated {
+                                blockedBundleIDs.removeAll { $0 == bundleID }
+                            }
                         } label: {
                             Image(systemName: "minus.circle")
                         }
@@ -106,7 +108,9 @@ struct SettingsView: View {
                         Text(domain)
                         Spacer()
                         Button(role: .destructive) {
-                            blockedDomains.removeAll { $0 == domain }
+                            IdentityGate.shared.performGated {
+                                blockedDomains.removeAll { $0 == domain }
+                            }
                         } label: {
                             Image(systemName: "minus.circle")
                         }
@@ -128,6 +132,8 @@ struct SettingsView: View {
                     .font(.callout)
                     .foregroundStyle(.secondary)
             }
+
+            FaceSettingsSection()
 
             Section("Media") {
                 Picker("Source", selection: $mediaController) {

@@ -25,8 +25,11 @@ struct FocusPanelView: View {
     @Default(.lastFocusSound) var lastSound
     @Default(.showSoundControls) var showSoundControls
 
+    @ObservedObject var gate = IdentityGate.shared
     @State private var endHoldProgress: CGFloat = 0
     @State private var isHoldingEnd = false
+    /// After a failed face check, the end hold lengthens to 15 s as the fallback.
+    @State private var endOverrideArmed = false
     @State private var pauseHoldProgress: CGFloat = 0
     @State private var isHoldingPause = false
     @State private var showBlockControls = false
@@ -74,6 +77,7 @@ struct FocusPanelView: View {
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.isPaused)
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: focus.hasSession)
         .animation(.spring(response: 0.42, dampingFraction: 0.8), value: onBreak)
+        .onChange(of: focus.hasSession) { _, _ in endOverrideArmed = false }
     }
 
     // MARK: - Break screen: quiet nudge + countdown + skip
@@ -227,19 +231,17 @@ struct FocusPanelView: View {
             guard !focus.hasSession else { return }
             cyclePreset()
         }
-        .onLongPressGesture(minimumDuration: 5.0) {
+        .onLongPressGesture(minimumDuration: endHoldDuration) {
             guard focus.hasSession else { return }
-            withAnimation(.spring(response: 0.45, dampingFraction: 1.0)) {
-                focus.endSession()
-            }
             isHoldingEnd = false
             endHoldProgress = 0
+            requestEndSession()
         } onPressingChanged: { pressing in
             guard focus.hasSession else { return }
             if pressing {
                 isHoldingEnd = true
                 endHoldProgress = 0
-                withAnimation(.linear(duration: 5.0)) {
+                withAnimation(.linear(duration: endHoldDuration)) {
                     endHoldProgress = 1
                 }
             } else {
@@ -253,7 +255,47 @@ struct FocusPanelView: View {
 
     private var centerLabel: String {
         guard focus.hasSession else { return "READY" }
-        return focus.isPaused ? "PAUSED" : focus.phaseLabel.uppercased()
+        if endOverrideArmed { return "HOLD 15S TO END" }
+        switch gate.phase {
+        case .verifying: return "CHECKING…"
+        case .failed: return "NOT YOU"
+        case .verified, .idle: break
+        }
+        if focus.isPaused {
+            return focus.autoPauseReason == .presence ? "AWAY" : "PAUSED"
+        }
+        return focus.phaseLabel.uppercased()
+    }
+
+    /// 5 s normally; 15 s once a face check has failed (the identity gate's fallback).
+    private var endHoldDuration: Double {
+        endOverrideArmed ? 15.0 : 5.0
+    }
+
+    /// Identity-gated exit: with the setting on and a face enrolled, the hold
+    /// first has to see the enrolled face. Unavailable camera → ends anyway.
+    private func requestEndSession() {
+        guard gate.isRequired, !endOverrideArmed else {
+            endSessionNow()
+            return
+        }
+        Task { @MainActor in
+            switch await gate.verify() {
+            case .verified, .unavailable:
+                endSessionNow()
+            case .notRecognized:
+                withAnimation(.spring(response: 0.42, dampingFraction: 0.8)) {
+                    endOverrideArmed = true
+                }
+            }
+        }
+    }
+
+    private func endSessionNow() {
+        endOverrideArmed = false
+        withAnimation(.spring(response: 0.45, dampingFraction: 1.0)) {
+            focus.endSession()
+        }
     }
 
     private var idlePresetText: String {

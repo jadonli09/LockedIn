@@ -53,3 +53,18 @@ The `shortcuts` CLI path is wired and silently no-ops right now.
 - Sparkle: still points at upstream's appcast (harmless; updates check will just find their releases — consider disabling the auto-check until you host your own feed).
 - The menu bar icon is OFF by default per the "empty menu bar" law; Quit lives in the island's right-click menu. Toggle the icon in Settings if you want a visible escape hatch.
 - The idle glow is 15% opacity per spec — it is *very* faint on a bright wallpaper. If you want it more present, it's one number in `FocusIdleView.swift`.
+
+
+## Face ID (added 2026-09-26, ~5 min, all opt-in)
+
+Nothing below runs until you flip the switches; the camera never starts on its own.
+
+- [ ] Settings → **Face ID**: click **Allow…** next to Camera (system prompt). If it says Denied: System Settings › Privacy & Security › Camera → LockedIn.
+- [ ] **Accessibility (helper)** → **Grant…** → enable *LockedInHelper* in System Settings › Privacy & Security › Accessibility. This is what types the password on the lock screen; the sandboxed app can't.
+- [ ] **Face** → **Enroll…** → follow the ring: look at the camera, then the 8 directions it lights up (2 samples each, ~30 s). Good lighting, no hat.
+- [ ] **Mac password** → type it in the field → **Save**. It's stored in the app's Keychain item and is never shown again; **Remove** clears it.
+- [ ] **Face unlock** → turn on "Unlock the Mac with my face" (On wake + On lock are preselected). Leave Liveness on *Light* unless you want to require a blink/head turn (*Heavy*).
+- [ ] Test: ⌃⌘Q to lock → the notch shows the face-id glyph with an orbiting arc ("Looking…"), then "Unlocked" and the password is typed. If it says "Not recognized", re-enroll in the lighting you actually sit in.
+- [ ] **Presence** → "Pause the session when I leave the desk" (default: away after 1 min). Start a session, walk away for the threshold → island shows "Away", session pauses (backdated), sound fades; sit back down → "Welcome back", session resumes.
+- [ ] Optional: "Require my face to end a session early" → the 5 s end-hold and blocklist removals first check it's you; if the camera can't see you, hold 15 s instead.
+- Note: a re-signed dev build with a *different* identity will make the Keychain prompt for the password item and the face-data key; `./scripts/lockedin build` keeps the stable "LockedIn Dev" identity so this doesn't happen.

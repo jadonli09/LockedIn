@@ -90,6 +90,14 @@
 		55C3FA531B877A743C66E551 /* PassCenter.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8B098F62F5B5BE528DDCB5E /* PassCenter.swift */; };
 		60AAEBB8EE647EBEC204B4A5 /* BlockControlView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3A67EA24EBDC43712874CEB7 /* BlockControlView.swift */; };
 		06FB1775A5927C5217DBF9F8 /* LegacyPreferencesMigration.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A202A6DDAA0DFCD13C14B1D /* LegacyPreferencesMigration.swift */; };
+		BB757B201088D48F3CDAAA75 /* FaceMatching.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E360309E5A94DC98D2DCBC /* FaceMatching.swift */; };
+		D88ABCFFC0D1C09D346964DD /* PresenceStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49199793B6A7FDA7436C7F1 /* PresenceStateMachine.swift */; };
+		1D142CE9180267843A37EC5E /* LivenessScoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96814170B0CADA4FC2684F4B /* LivenessScoring.swift */; };
+		5978254DD34CF2FB2E2C3C3C /* LivenessCues.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6528D031AD7F69BFF093645B /* LivenessCues.swift */; };
+		39564EAA9F62D0D48FB80760 /* FaceMatching.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4E360309E5A94DC98D2DCBC /* FaceMatching.swift */; };
+		6C986BE316817D5378603952 /* PresenceStateMachine.swift in Sources */ = {isa = PBXBuildFile; fileRef = D49199793B6A7FDA7436C7F1 /* PresenceStateMachine.swift */; };
+		CFA03F857A315715D2DD8E54 /* LivenessScoring.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96814170B0CADA4FC2684F4B /* LivenessScoring.swift */; };
+		5E9579813AF0877B29C1573E /* LivenessCues.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6528D031AD7F69BFF093645B /* LivenessCues.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -206,6 +214,10 @@
 		E8B098F62F5B5BE528DDCB5E /* PassCenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassCenter.swift; sourceTree = "<group>"; };
 		3A67EA24EBDC43712874CEB7 /* BlockControlView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BlockControlView.swift; sourceTree = "<group>"; };
 		0A202A6DDAA0DFCD13C14B1D /* LegacyPreferencesMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegacyPreferencesMigration.swift; sourceTree = "<group>"; };
+		D4E360309E5A94DC98D2DCBC /* FaceMatching.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FaceMatching.swift; sourceTree = "<group>"; };
+		D49199793B6A7FDA7436C7F1 /* PresenceStateMachine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PresenceStateMachine.swift; sourceTree = "<group>"; };
+		96814170B0CADA4FC2684F4B /* LivenessScoring.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivenessScoring.swift; sourceTree = "<group>"; };
+		6528D031AD7F69BFF093645B /* LivenessCues.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LivenessCues.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -222,6 +234,7 @@
 		112FB72F2CCF12CC0015238C /* private */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = private; sourceTree = "<group>"; };
 		11F748502EC9AABA00F841DB /* LockedInHelper */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (11F7485C2EC9AABA00F841DB /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LockedInHelper; sourceTree = "<group>"; };
 		AA1000000000000000000002 /* LockedInTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = LockedInTests; sourceTree = "<group>"; };
+		5D66DB4D5BEE555944A92FA2 /* Face */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = Face; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -467,6 +480,7 @@
 				14CEF41E2C5CAED400855D72 /* LockedIn.entitlements */,
 				14CEF41B2C5CAED400855D72 /* Preview Content */,
 				112FB72F2CCF12CC0015238C /* private */,
+				5D66DB4D5BEE555944A92FA2 /* Face */,
 				11CC44A12CEE614100C7244B /* IslandCoordinator.swift */,
 			);
 			path = LockedIn;
@@ -510,6 +524,10 @@
 		14D570C72C5F38760011E668 /* models */ = {
 			isa = PBXGroup;
 			children = (
+				6528D031AD7F69BFF093645B /* LivenessCues.swift */,
+				96814170B0CADA4FC2684F4B /* LivenessScoring.swift */,
+				D49199793B6A7FDA7436C7F1 /* PresenceStateMachine.swift */,
+				D4E360309E5A94DC98D2DCBC /* FaceMatching.swift */,
 				9BD0218F4842EEEAE35CA3F7 /* BlocklistMatcher.swift */,
 				2C60EDDFDB435E71A3118958 /* FocusDefaults.swift */,
 				E86AFACAB39A71B0A433E5AD /* FocusModels.swift */,
@@ -651,6 +669,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				112FB72F2CCF12CC0015238C /* private */,
+				5D66DB4D5BEE555944A92FA2 /* Face */,
 			);
 			name = LockedIn;
 			packageProductDependencies = (
@@ -774,6 +793,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5978254DD34CF2FB2E2C3C3C /* LivenessCues.swift in Sources */,
+				1D142CE9180267843A37EC5E /* LivenessScoring.swift in Sources */,
+				D88ABCFFC0D1C09D346964DD /* PresenceStateMachine.swift in Sources */,
+				BB757B201088D48F3CDAAA75 /* FaceMatching.swift in Sources */,
 				06FB1775A5927C5217DBF9F8 /* LegacyPreferencesMigration.swift in Sources */,
 				60AAEBB8EE647EBEC204B4A5 /* BlockControlView.swift in Sources */,
 				55C3FA531B877A743C66E551 /* PassCenter.swift in Sources */,
@@ -842,6 +865,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				5E9579813AF0877B29C1573E /* LivenessCues.swift in Sources */,
+				CFA03F857A315715D2DD8E54 /* LivenessScoring.swift in Sources */,
+				6C986BE316817D5378603952 /* PresenceStateMachine.swift in Sources */,
+				39564EAA9F62D0D48FB80760 /* FaceMatching.swift in Sources */,
 				AA1000000000000000000009 /* FocusModels.swift in Sources */,
 				AA100000000000000000000A /* BlocklistMatcher.swift in Sources */,
 			);
@@ -1064,7 +1091,7 @@
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "This app uses AppleEvents to control music";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "This app uses the calendar to display your calendar events";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to display a live camera view";
+				INFOPLIST_KEY_NSCameraUsageDescription = "LockedIn uses the camera to recognize your face for face unlock, presence detection, and identity checks. Frames are processed on-device and never stored.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSRemindersUsageDescription = "This app uses Reminders to display your scheduled reminder in the calendar";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1117,7 +1144,7 @@
 				INFOPLIST_KEY_LSUIElement = YES;
 				INFOPLIST_KEY_NSAppleEventsUsageDescription = "This app uses AppleEvents to control music";
 				INFOPLIST_KEY_NSCalendarsUsageDescription = "This app uses the calendar to display your calendar events";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to display a live camera view";
+				INFOPLIST_KEY_NSCameraUsageDescription = "LockedIn uses the camera to recognize your face for face unlock, presence detection, and identity checks. Frames are processed on-device and never stored.";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				INFOPLIST_KEY_NSRemindersUsageDescription = "This app uses Reminders to display your scheduled reminder in the calendar";
 				LD_RUNPATH_SEARCH_PATHS = (

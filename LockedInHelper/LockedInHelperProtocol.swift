@@ -20,6 +20,10 @@ import Foundation
     func isScreenBrightnessAvailable(with reply: @escaping (Bool) -> Void)
     func currentScreenBrightness(with reply: @escaping (NSNumber?) -> Void)
     func setScreenBrightness(_ value: Float, with reply: @escaping (Bool) -> Void)
+    // Face unlock (typing needs Accessibility + the HID tap, which the sandboxed app can't use)
+    /// Types `password` (UTF-8) into the lock screen, then Return. Refuses unless the
+    /// session is actually locked (CGSession) and the helper has Accessibility.
+    func typeUnlockPassword(_ password: Data, with reply: @escaping (Bool, String?) -> Void)
 }
 
 /*
