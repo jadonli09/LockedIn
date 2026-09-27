@@ -178,7 +178,7 @@ struct ContentView: View {
             VStack(alignment: .leading) {
                 if coordinator.helloAnimationRunning {
                     Spacer()
-                    HelloAnimation(onFinish: {
+                    LockInAnimation(onFinish: {
                         vm.closeHello()
                     }).frame(
                         width: openNotchSize.width - 96,

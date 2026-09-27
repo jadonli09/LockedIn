@@ -4,247 +4,546 @@
 <meta charset="utf-8">
 <title>Locked in</title>
 <style>
+  /* Palette is the mesh's own: abyss, tide, glass, mist. The app's accent
+     appears exactly once — the point at the brush tip. */
   :root {
-    --field: #0A0A0A;
-    --notch: #000;
-    --accent: #E8A87C; /* overridden by ?accent= */
-    --text: #FFF;
-    --hair: rgba(255, 255, 255, 0.07);
+    --abyss: #06131C;
+    --mist: #EAF9FF;
+    --accent: #E8A87C;           /* overridden by ?accent= */
+    --ink: rgba(234, 249, 255, 0.94);
+    --ink-soft: rgba(234, 249, 255, 0.62);
+    --ink-faint: rgba(234, 249, 255, 0.50);
+    --glass: rgba(255, 255, 255, 0.10);
+    --glass-edge: rgba(255, 255, 255, 0.22);
+    /* The ensō's diameter; every size inside it derives from this. */
+    --d: min(74vh, 86vw);
   }
   * { box-sizing: border-box; }
   html, body {
     margin: 0;
     height: 100%;
-    background: var(--field);
-    color: var(--text);
+    background: var(--abyss);
+    color: var(--ink);
     font-family: ui-rounded, -apple-system, "SF Pro Rounded", sans-serif;
     overflow: hidden;
+    -webkit-font-smoothing: antialiased;
   }
   body.relock { animation: fadein 3s ease-out; }
   @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 
-  /* Ground the composition: a hairline grid, barely there and vignetted to
-     the center, so the black reads as a surface rather than a void. */
-  body::before {
-    content: "";
+  /* The mesh: one WebGL canvas behind everything, faded in after its first
+     frame. Above it, a soft pool of shadow behind the centre so the numerals
+     stay legible where the mesh runs bright. */
+  #mesh {
     position: fixed;
     inset: 0;
-    background-image:
-      linear-gradient(var(--hair) 1px, transparent 1px),
-      linear-gradient(90deg, var(--hair) 1px, transparent 1px);
-    background-size: 96px 96px;
-    background-position: center top;
-    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 20%, transparent 100%);
-            mask-image: radial-gradient(ellipse 70% 60% at 50% 45%, #000 20%, transparent 100%);
-    opacity: 0.6;
-    pointer-events: none;
+    width: 100%;
+    height: 100%;
+    display: block;
+    opacity: 0;
+    transition: opacity 1.6s ease-out;
   }
-
-  /* The signature: the island itself at the top, minutes numeral at its
-     right edge, and a plumb line dropping from it to the countdown — the
-     block page hangs from the notch. */
-  .island-row {
+  #mesh.ready { opacity: 1; }
+  .scrim {
     position: fixed;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-  .island {
-    width: 196px;
-    height: 34px;
-    background: var(--notch);
-    border-bottom-left-radius: 14px;
-    border-bottom-right-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.09);
-    border-top: none;
-  }
-  .island-minutes {
-    position: absolute;
-    right: -34px;
-    top: 0;
-    height: 34px;
-    display: flex;
-    align-items: center;
-    font-size: 11px;
-    font-weight: 500;
-    font-variant-numeric: tabular-nums;
-    color: var(--accent);
-  }
-  .plumb {
-    position: absolute;
-    left: 50%;
-    top: 34px;
-    width: 1px;
-    height: 120px;
-    background: linear-gradient(rgba(255,255,255,0.18), var(--hair));
-    transform: translateX(-0.5px);
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(circle at 50% 48%, rgba(4, 16, 26, 0.40) 0%, rgba(4, 16, 26, 0.18) 38%, rgba(4, 16, 26, 0) 68%);
   }
 
-
-  .stack {
+  .stage {
+    position: relative;
     height: 100%;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 0;
     text-align: center;
-    animation: settle 0.7s cubic-bezier(0.2, 0.9, 0.3, 1);
-    padding-top: 56px;
+    animation: settle 1.4s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
   @keyframes settle {
-    from { opacity: 0; transform: translateY(10px); }
+    from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: none; }
   }
 
-  .eyebrow {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.45);
-    margin: 0 0 22px;
+  /* The ensō. A guide ring, barely there; the brush stroke over it, drawn
+     clockwise from the top as minutes are attended; and the tip. */
+  .enso {
+    position: relative;
+    width: var(--d);
+    height: var(--d);
+    flex: none;
   }
-  .eyebrow .dot {
-    width: 5px; height: 5px; border-radius: 50%;
-    background: var(--accent);
+  .enso svg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+  }
+  .guide {
+    fill: none;
+    stroke: rgba(234, 249, 255, 0.10);
+    stroke-width: 1;
+  }
+  .arc {
+    fill: none;
+    stroke: var(--mist);
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.8s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .arc.intro { transition: stroke-dashoffset 2.6s cubic-bezier(0.2, 0.7, 0.2, 1); }
+  .arc.halo {
+    stroke-width: 20;
+    opacity: 0.16;
+    filter: url(#soften);
+  }
+  .arc.ink {
+    stroke-width: 11;
+    opacity: 0.9;
+    filter: url(#brush);
+  }
+  .tip {
+    transform-box: view-box;
+    transform-origin: 200px 200px;
+    transition: transform 1.8s cubic-bezier(0.4, 0, 0.2, 1), opacity 1s ease;
+  }
+  .tip.intro { transition: transform 2.6s cubic-bezier(0.2, 0.7, 0.2, 1), opacity 1s ease; }
+  .tip circle {
+    fill: var(--accent);
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: breathe 7s ease-in-out infinite;
+  }
+  .tip .aura {
+    fill: var(--accent);
+    opacity: 0.35;
+    filter: url(#soften);
+  }
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.35); }
   }
 
-  .time {
-    font-size: clamp(120px, 15vw, 176px);
-    font-weight: 600;
-    line-height: 0.95;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: -0.02em;
-    margin: 0;
-  }
-  .phase {
-    margin: 18px 0 0;
-    font-size: 12px;
-    font-weight: 500;
-    letter-spacing: 0.22em;
-    color: rgba(255, 255, 255, 0.4);
-  }
-
-  /* Attended-minute tally: dots grouped in fives, like a tally mark, so the
-     row reads at a glance. */
-  .tally {
-    margin: 34px 0 0;
+  .inner {
+    position: absolute;
+    inset: 0;
+    z-index: 2;                 /* everything in here sits over the pass */
+    pointer-events: none;       /* …but only the links take the pointer */
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 12px;
+    justify-content: center;
+    gap: 0;
+    padding: calc(var(--d) * 0.10);
   }
-  .tally .rows { display: flex; flex-direction: column; gap: 10px; }
-  .tally .row { display: flex; gap: 14px; }
-  .tally .group { display: flex; gap: 6px; }
-  .tally .dot {
-    width: 6px; height: 6px; border-radius: 50%;
-    background: rgba(255, 255, 255, 0.13);
-    transition: background 0.4s ease, transform 0.4s ease;
+  .site {
+    margin: 0 0 calc(var(--d) * 0.025);
+    font-size: clamp(18px, calc(var(--d) * 0.056), 40px);
+    font-weight: 300;
+    letter-spacing: 0.01em;
+    color: var(--ink-soft);
   }
-  .tally .dot.attended { background: var(--accent); }
-  .tally .dot.now { transform: scale(1.35); box-shadow: 0 0 0 3px rgba(255,255,255,0.06); }
-  .attended-line {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    color: rgba(255, 255, 255, 0.35);
+  .time {
+    margin: 0;
+    font-size: calc(var(--d) * 0.32);
+    font-weight: 200;
+    line-height: 1;
+    letter-spacing: -0.035em;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    text-shadow: 0 0 calc(var(--d) * 0.08) rgba(4, 16, 26, 0.45);
   }
+  .time[hidden] { display: none; }
+  /* No deadline to count toward: the label and the capsule, centred. */
+  .inner.still .site { margin-bottom: calc(var(--d) * 0.06); }
 
   .actions {
-    margin-top: 40px;
+    margin-top: calc(var(--d) * 0.055);
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 14px;
   }
+  /* Glass capsule shared by both actions: a frosted pane with a hairline
+     highlight along its top edge. */
+  .glass {
+    color: var(--ink);
+    text-decoration: none;
+    border-radius: 999px;
+    background:
+      linear-gradient(180deg, rgba(255,255,255,0.18), rgba(255,255,255,0.04)),
+      var(--glass);
+    -webkit-backdrop-filter: blur(18px) saturate(1.3);
+            backdrop-filter: blur(18px) saturate(1.3);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 0 0 1px var(--glass-edge),
+      0 8px 28px rgba(0, 10, 20, 0.30);
+    white-space: nowrap;
+    user-select: none;
+  }
+  .glass:focus-visible {
+    outline: 2px solid rgba(234, 249, 255, 0.75);
+    outline-offset: 4px;
+  }
+  .inner a { pointer-events: auto; }
   a.primary {
     display: inline-flex;
     align-items: center;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.94);
-    color: rgba(0, 0, 0, 0.88);
-    font-size: 15px;
-    font-weight: 500;
-    padding: 12px 22px 12px 26px;
-    border-radius: 999px;
-    text-decoration: none;
-    box-shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
-    transition: transform 0.15s ease;
-  }
-  a.primary:hover { transform: translateY(-1px); }
-  a.primary:active { transform: scale(0.97); }
-  a.primary .arrow { opacity: 0.55; font-size: 14px; }
-  .hint {
-    font-size: 11px;
-    color: rgba(255, 255, 255, 0.28);
+    font-size: clamp(14px, calc(var(--d) * 0.026), 21px);
+    font-weight: 400;
     letter-spacing: 0.02em;
+    padding: 0.75em 1.9em;
+    transition: transform 0.2s ease, background 0.3s ease;
   }
+  a.primary:hover { transform: translateY(-1px); background: linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.06)), var(--glass); }
+  a.primary:active { transform: scale(0.98); }
 
-  /* The 2-minute pass: a liquid-glass capsule that runs from the cursor.
-     Position is driven by JS every frame. */
-  .pass-arena {
-    position: relative;
-    width: min(760px, 94vw);
-    height: 76px;
-  }
+  /* The 2-minute pass: a smaller capsule that lives *under* "Stay locked
+     in" and uses it as cover. Reach for it and it tucks around the far side
+     of the capsule — so the thing under the cursor is the capsule.
+     Position comes from the steering loop below (ring-local px). */
   a.pass {
     position: absolute;
     left: 50%;
     top: 50%;
-    transform: translate(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px)));
+    z-index: 1;
+    transform: translate(calc(-50% + var(--px, 0px)), calc(-50% + var(--py, 0px)));
     will-change: transform;
-    color: rgba(255, 255, 255, 0.85);
-    font-size: 12px;
-    font-weight: 500;
-    text-decoration: none;
-    padding: 8px 16px;
-    border-radius: 999px;
-    background:
-      linear-gradient(180deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04)),
-      rgba(255,255,255,0.06);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-            backdrop-filter: blur(14px) saturate(1.4);
-    box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.55),
-      inset 0 0 0 1px rgba(255,255,255,0.18),
-      0 4px 10px rgba(0,0,0,0.35);
-    white-space: nowrap;
-    user-select: none;
+    color: var(--ink-soft);
+    font-size: clamp(12px, calc(var(--d) * 0.021), 17px);
+    font-weight: 400;
+    letter-spacing: 0.04em;
+    padding: 0.55em 1.25em;
+    cursor: pointer;            /* looks every bit a link… */
+  }
+  a.pass[hidden] { display: none; }
+  @media (prefers-reduced-motion: reduce) {
+    a.pass { transition: transform 0.5s ease; }
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .stack { animation: none; }
+    .stage { animation: none; }
+    .arc, .arc.intro, .tip, .tip.intro { transition: none; }
+    .tip circle { animation: none; }
   }
 </style>
 </head>
 <body>
-<div class="island-row">
-  <div class="island"></div>
-  <div class="island-minutes" id="island-minutes"></div>
-  <div class="plumb"></div>
-</div>
-<div class="stack">
-  <p class="eyebrow"><span class="dot"></span><span id="domain-label">Locked in</span></p>
-  <p class="time" id="time">—</p>
-  <p class="phase">FOCUS · REMAINING</p>
-  <div class="tally">
-    <div class="rows" id="dot-rows"></div>
-    <div class="attended-line" id="attended-line"></div>
+<canvas id="mesh"></canvas>
+<div class="scrim"></div>
+<main class="stage">
+  <div class="enso">
+    <svg viewBox="0 0 400 400" aria-hidden="true">
+      <defs>
+        <!-- Brush edge: low-frequency noise nudges the stroke outline so it
+             reads as ink on paper rather than a vector ring. -->
+        <filter id="brush" x="-15%" y="-15%" width="130%" height="130%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.11" numOctaves="2" seed="11" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="6" xChannelSelector="R" yChannelSelector="G"/>
+        </filter>
+        <filter id="soften" x="-30%" y="-30%" width="160%" height="160%">
+          <feGaussianBlur stdDeviation="7"/>
+        </filter>
+      </defs>
+      <circle class="guide" cx="200" cy="200" r="182"/>
+      <g transform="rotate(-90 200 200)">
+        <circle class="arc halo" id="arc-halo" cx="200" cy="200" r="182" style="stroke-dasharray:1143.54;stroke-dashoffset:1143.54"/>
+        <circle class="arc ink" id="arc-ink" cx="200" cy="200" r="182" style="stroke-dasharray:1143.54;stroke-dashoffset:1143.54"/>
+      </g>
+      <g class="tip" id="tip" style="transform:rotate(-90deg);opacity:0">
+        <circle class="aura" cx="382" cy="200" r="9"/>
+        <circle cx="382" cy="200" r="4.5"/>
+      </g>
+    </svg>
+    <div class="inner">
+      <p class="site" id="domain-label">locked in</p>
+      <p class="time" id="time">—</p>
+      <div class="actions">
+        <a class="primary glass" id="stay" href="lockedin://close">Stay locked in</a>
+      </div>
+    </div>
+    <a class="pass glass" id="pass" href="#" tabindex="-1" hidden>2-min pass</a>
   </div>
-  <div class="actions">
-    <a class="primary" href="lockedin://close"><span>Stay locked in</span><span class="arrow">↩</span></a>
-    <span class="hint" id="hint"></span>
-  </div>
-  <div class="pass-arena" id="pass-arena" hidden>
-    <a class="pass" id="pass" href="#">2-min pass</a>
-  </div>
-</div>
+</main>
 <script>
+  // ---------------------------------------------------------------------
+  // Mesh drift — ported from the 21st.dev Shader Builder "ShaderBackground"
+  // to plain WebGL. One full-screen triangle, a value-noise domain warp
+  // over four drifting colour blobs, a soft 5-tap blur, vignette and grain.
+  // Cursor mode 2 is a gentle local rotation that follows the pointer.
+  // ---------------------------------------------------------------------
+  (function () {
+    const VERT = `attribute vec2 a_position;
+void main() { gl_Position = vec4(a_position, 0.0, 1.0); }`;
+
+    const FRAG = `#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
+precision mediump float;
+#endif
+uniform vec3 u_colors[8];
+uniform vec4 u_scene;      // resolution.xy, time, colour count
+uniform vec4 u_shape;      // scale, intensity, paramA, warp
+uniform vec4 u_surface;    // detail, contrast, brightness, saturation
+uniform vec4 u_finish;     // hue, vignette, blur, grain
+uniform vec4 u_transform;  // seed, rotation, drift, OKLab toggle
+uniform vec4 u_space;      // offset.xy, pointer.xy
+uniform vec4 u_cursor;     // presence, effect, strength, radius
+#define u_resolution u_scene.xy
+#define u_time u_scene.z
+#define u_colorCount u_scene.w
+#define u_scale u_shape.x
+#define u_intensity u_shape.y
+#define u_warp u_shape.w
+#define u_detail u_surface.x
+#define u_contrast u_surface.y
+#define u_brightness u_surface.z
+#define u_saturation u_surface.w
+#define u_hue u_finish.x
+#define u_vignette u_finish.y
+#define u_blur u_finish.z
+#define u_grain u_finish.w
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+#define u_seed u_transform.x
+#else
+#define u_seed mod(u_transform.x, 31.0)
+#endif
+#define u_rotate u_transform.y
+#define u_drift u_transform.z
+#define u_oklab u_transform.w
+#define u_offset u_space.xy
+#define u_mouse u_space.zw
+#define u_cursorPresence u_cursor.x
+#define u_cursorEffect u_cursor.y
+#define u_cursorStrength u_cursor.z
+#define u_cursorRadius u_cursor.w
+
+float hash21(vec2 p) {
+#ifndef GL_FRAGMENT_PRECISION_HIGH
+  p = mod(p, 31.0);
+#endif
+  p = fract(p * vec2(234.34, 435.345));
+  p += dot(p, p + 34.23);
+  return fract(p.x * p.y);
+}
+float grainHash(vec2 p) {
+  vec3 p3 = fract(vec3(p.xyx) * 0.1031);
+  p3 += dot(p3, p3.yzx + 33.33);
+  return fract((p3.x + p3.y) * p3.z);
+}
+float noise(vec2 p) {
+  vec2 i = floor(p);
+  vec2 f = fract(p);
+  vec2 u = f * f * (3.0 - 2.0 * f);
+  return mix(
+    mix(hash21(i), hash21(i + vec2(1.0, 0.0)), u.x),
+    mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0, 1.0)), u.x),
+    u.y);
+}
+float fbm(vec2 p) {
+  float v = 0.0;
+  float a = 0.5;
+  for (int i = 0; i < 5; i++) {
+    v += a * noise(p);
+    p = p * 2.03 + vec2(17.0, 9.2);
+    a *= 0.5;
+  }
+  return v;
+}
+vec3 hueRotate(vec3 col, float a) {
+  const mat3 toYIQ = mat3(0.299, 0.596, 0.211, 0.587, -0.274, -0.523, 0.114, -0.322, 0.312);
+  const mat3 toRGB = mat3(1.0, 1.0, 1.0, 0.956, -0.272, -1.106, 0.621, -0.647, 1.703);
+  vec3 yiq = toYIQ * col;
+  float ca = cos(a), sa = sin(a);
+  yiq = vec3(yiq.x, yiq.y * ca - yiq.z * sa, yiq.y * sa + yiq.z * ca);
+  return toRGB * yiq;
+}
+vec3 shade(vec2 p, float t) {
+  vec3 acc = u_colors[0] * 0.15;
+  float total = 0.15;
+  for (int i = 0; i < 8; i++) {
+    if (float(i) >= u_colorCount) break;
+    float fi = float(i);
+    vec2 c = vec2(
+      sin(t * (0.21 + fi * 0.071) + fi * 2.4 + u_seed),
+      cos(t * (0.17 + fi * 0.093) + fi * 1.7)) * (0.45 + u_intensity * 0.35);
+    float w = exp(-dot(p - c, p - c) * 6.0);
+    acc += u_colors[i] * w;
+    total += w;
+  }
+  return acc / total;
+}
+void main() {
+  vec2 screenUv = gl_FragCoord.xy / u_resolution.xy;
+  vec2 p = (gl_FragCoord.xy - 0.5 * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+  if (u_cursorPresence > 0.001) {
+    vec2 cursor = (0.5 * u_mouse * u_resolution.xy) / min(u_resolution.x, u_resolution.y);
+    vec2 cursorDelta = p - cursor;
+    float cursorDistance = length(cursorDelta);
+    float cursorMask = u_cursorPresence * (1.0 - smoothstep(0.0, u_cursorRadius, cursorDistance));
+    float cursorAngle = cursorMask * u_cursorStrength * 2.2;
+    float cc = cos(cursorAngle), cs = sin(cursorAngle);
+    p = cursor + mat2(cc, -cs, cs, cc) * cursorDelta;
+  }
+  p *= u_scale;
+  if (abs(u_rotate) > 0.0001) {
+    float cr = cos(u_rotate), sr = sin(u_rotate);
+    p = mat2(cr, -sr, sr, cr) * p;
+  }
+  p += u_offset;
+  if (u_drift > 0.0001)
+    p += u_drift * vec2(sin(u_time * 0.31), cos(u_time * 0.23));
+  if (u_warp > 0.0) {
+    p += u_warp * (vec2(fbm(p * u_detail + u_seed), fbm(p * u_detail + vec2(5.2, 1.3))) - 0.5);
+  }
+  vec3 col;
+  if (u_blur > 0.0) {
+    float pe = u_blur * u_scale;
+    col  = shade(p, u_time) * 0.36;
+    col += shade(p + vec2(pe, 0.0), u_time) * 0.16;
+    col += shade(p - vec2(pe, 0.0), u_time) * 0.16;
+    col += shade(p + vec2(0.0, pe), u_time) * 0.16;
+    col += shade(p - vec2(0.0, pe), u_time) * 0.16;
+  } else {
+    col = shade(p, u_time);
+  }
+  if (abs(u_contrast - 1.0) > 0.0001) col = (col - 0.5) * u_contrast + 0.5;
+  if (abs(u_saturation - 1.0) > 0.0001) {
+    float luma = dot(col, vec3(0.299, 0.587, 0.114));
+    col = mix(vec3(luma), col, u_saturation);
+  }
+  if (abs(u_hue) > 0.0001) col = hueRotate(col, u_hue);
+  if (abs(u_brightness) > 0.0001) col += u_brightness;
+  if (u_vignette > 0.0001) {
+    float vd = length(screenUv - 0.5) * 1.41421356;
+    col *= 1.0 - u_vignette * smoothstep(0.35, 1.0, vd);
+  }
+  if (u_grain > 0.0001)
+    col += (grainHash(gl_FragCoord.xy + vec2(u_seed * 17.0, u_seed * 31.0)) - 0.5) * u_grain;
+  gl_FragColor = vec4(clamp(col, 0.0, 1.0), 1.0);
+}`;
+
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const U = {
+      colors: [
+        [0.0118, 0.1098, 0.1490],
+        [0.1059, 0.4235, 0.6588],
+        [0.3529, 0.8235, 0.9569],
+        [0.9176, 0.9765, 1.0000],
+        [0.9176, 0.9765, 1.0000],
+        [0.9176, 0.9765, 1.0000],
+        [0.9176, 0.9765, 1.0000],
+        [0.9176, 0.9765, 1.0000],
+      ],
+      colorCount: 4,
+      scale: 1.3, intensity: 0.56, paramA: 0.67, warp: 0.192,
+      detail: 2.016, contrast: 1.167, brightness: 0.0, saturation: 1.0,
+      hue: 0.0, vignette: 0.15, blur: 0.0072, grain: 0.098,
+      seed: 5069.0, rotate: 2.7227, offsetX: 0.09, offsetY: 0.15, drift: 0.148,
+      cursorEnabled: !reduced, cursorEffect: 2.0, cursorStrength: 0.73, cursorRadius: 0.365,
+      oklab: 0.0,
+      timeScale: reduced ? 0 : -1.373,
+    };
+
+    const canvas = document.getElementById("mesh");
+    const gl = canvas.getContext("webgl", { antialias: false });
+    if (!gl) { canvas.remove(); return; }
+
+    const compile = (type, src) => {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) console.error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    const program = gl.createProgram();
+    gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT));
+    gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG));
+    gl.linkProgram(program);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) { console.error(gl.getProgramInfoLog(program)); canvas.remove(); return; }
+    gl.useProgram(program);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+    const loc = gl.getAttribLocation(program, "a_position");
+    gl.enableVertexAttribArray(loc);
+    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+    const uni = (n) => gl.getUniformLocation(program, n);
+    gl.uniform3fv(uni("u_colors"), new Float32Array(U.colors.flat()));
+    gl.uniform4f(uni("u_shape"), U.scale, U.intensity, U.paramA, U.warp);
+    gl.uniform4f(uni("u_surface"), U.detail, U.contrast, U.brightness, U.saturation);
+    gl.uniform4f(uni("u_finish"), U.hue, U.vignette, U.blur, U.grain);
+    gl.uniform4f(uni("u_transform"), U.seed, U.rotate, U.drift, U.oklab);
+    const uScene = uni("u_scene"), uSpace = uni("u_space"), uCursor = uni("u_cursor");
+
+    let targetX = 0, targetY = 0, targetPresence = 0;
+    let mouseX = 0, mouseY = 0, presence = 0;
+    let raf = 0, lastNow = null;
+    let visible = document.visibilityState === "visible";
+    const start = performance.now();
+    const animated = Math.abs(U.timeScale) > 0.0001;
+
+    function resize() {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const rawW = Math.max(1, Math.round(innerWidth * dpr));
+      const rawH = Math.max(1, Math.round(innerHeight * dpr));
+      const k = Math.min(1, Math.sqrt(2_000_000 / Math.max(1, rawW * rawH)));
+      const w = Math.max(1, Math.round(rawW * k)), h = Math.max(1, Math.round(rawH * k));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w; canvas.height = h;
+        gl.viewport(0, 0, w, h);
+      }
+    }
+    function requestRender() {
+      if (visible && raf === 0) raf = requestAnimationFrame(render);
+    }
+    function render(now) {
+      raf = 0;
+      if (!visible) return;
+      const dt = lastNow === null ? 0 : Math.min((now - lastNow) / 1000, 0.1);
+      lastNow = now;
+      const follow = 1 - Math.exp(-12 * dt);
+      mouseX += (targetX - mouseX) * follow;
+      mouseY += (targetY - mouseY) * follow;
+      presence += (targetPresence - presence) * follow;
+      resize();
+      gl.uniform4f(uScene, canvas.width, canvas.height, ((now - start) / 1000) * U.timeScale, U.colorCount);
+      gl.uniform4f(uSpace, U.offsetX, U.offsetY, mouseX, mouseY);
+      gl.uniform4f(uCursor, U.cursorEnabled ? presence : 0, U.cursorEffect, U.cursorStrength, U.cursorRadius);
+      gl.drawArrays(gl.TRIANGLES, 0, 3);
+      canvas.classList.add("ready");
+      const settling = Math.abs(targetX - mouseX) > 0.001 || Math.abs(targetY - mouseY) > 0.001
+        || Math.abs(targetPresence - presence) > 0.001;
+      if (animated || settling) requestRender(); else lastNow = null;
+    }
+
+    if (U.cursorEnabled) {
+      window.addEventListener("pointermove", (e) => {
+        const nx = (e.clientX / innerWidth) * 2 - 1;
+        const ny = -((e.clientY / innerHeight) * 2 - 1);
+        if (targetPresence === 0 && presence < 0.01) { mouseX = nx; mouseY = ny; }
+        targetX = nx; targetY = ny; targetPresence = 1;
+        requestRender();
+      }, { passive: true });
+      const leave = () => { targetPresence = 0; requestRender(); };
+      window.addEventListener("pointercancel", leave);
+      window.addEventListener("blur", leave);
+      document.documentElement.addEventListener("pointerleave", leave);
+    }
+    window.addEventListener("resize", () => { resize(); requestRender(); });
+    document.addEventListener("visibilitychange", () => {
+      visible = document.visibilityState === "visible";
+      if (visible) requestRender();
+      else if (raf !== 0) { cancelAnimationFrame(raf); raf = 0; lastNow = null; }
+    });
+    resize();
+    requestRender();
+  })();
+
   const params = new URLSearchParams(location.search);
   if (params.get("relock") === "1") document.body.classList.add("relock");
 
@@ -262,116 +561,271 @@
   const domain = params.get("domain");
   if (domain) {
     document.getElementById("domain-label").textContent = domain;
-    document.getElementById("hint").textContent = "closes this tab";
-    document.getElementById("pass-arena").hidden = false;
     const pass = document.getElementById("pass");
+    pass.hidden = false;
     pass.href = "lockedin://pass?domain=" + encodeURIComponent(domain)
       + "&back=" + encodeURIComponent(params.get("back") || ("https://" + domain))
       + "&b=" + encodeURIComponent(browser);
   }
 
-  // Runaway pass, continuous physics: a damped particle pushed away by an
-  // inverse-distance field around the cursor (harder the closer you get —
-  // speed adapts to the chase), pulled home by a soft spring, integrated
-  // every frame. Near a side wall it curves back toward open space.
+  // The pass runs away — as a small creature would, not as a button that
+  // teleports. Reynolds' steering model (gdc99): a point mass with a top
+  // speed and a top force; each behaviour proposes a desired velocity and
+  // steers toward it; the proposals are weighted and summed, then clipped.
+  //   · evade   — flee the cursor's *predicted* position (its velocity
+  //               carried forward), so it dodges where you're heading;
+  //   · hide    — Buckland's variant: the hiding spot is the far side of an
+  //               obstacle from the hunter. The obstacle is "Stay locked in";
+  //               the pass tucks under it, away from you;
+  //   · arrive  — decelerate into the spot instead of overshooting it;
+  //   · contain — the ring is the world; it curves back from the edge.
+  // Two touches from animal behaviour make it read as alive: it perceives
+  // the cursor through a ~70 ms lag (reaction time), and the first time you
+  // break its panic radius it startles — a short burst of extra speed and
+  // force — then calms.
   (function () {
-    const arena = document.getElementById("pass-arena");
     const pass = document.getElementById("pass");
-    const RADIUS = 240, PUSH = 16000, SPRING = 5.5, DAMPING = 0.90, MAX_SPEED = 1800;
-    let x = 0, y = 0, vx = 0, vy = 0;
-    let cursor = null, last = performance.now();
-    document.addEventListener("mousemove", e => { cursor = { x: e.clientX, y: e.clientY }; });
-    document.addEventListener("mouseleave", () => { cursor = null; });
+    const stay = document.getElementById("stay");
+    const ring = document.querySelector(".enso");
+    if (pass.hidden) return;
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // Geometry, in ring-local px with the origin at the ring's centre.
+    let d = 0, ringRect = null, cap = null, half = { w: 0, h: 0 }, arena = 0;
+    function measure() {
+      ringRect = ring.getBoundingClientRect();
+      d = ringRect.width;
+      const c = stay.getBoundingClientRect();
+      cap = { x: c.left + c.width / 2 - ringRect.left - d / 2, y: c.top + c.height / 2 - ringRect.top - d / 2, w: c.width, h: c.height };
+      const pr = pass.getBoundingClientRect();
+      half = { w: pr.width / 2, h: pr.height / 2 };
+      arena = d * 0.455 - Math.hypot(half.w, half.h);       // inside the stroke
+    }
+    measure();
+    setTimeout(measure, 1600);      // again once the page's settle animation has landed
+    window.addEventListener("resize", measure);
+
+    // Tunables, scaled to the ring so it feels the same at every size.
+    const S = () => d / 700;
+    const MAX_SPEED = () => 560 * S();
+    const MAX_FORCE = () => 2600 * S();
+    const PANIC = () => 210 * S();          // notices you here
+    const LAG = 0.04;                       // s — reaction time
+    const SLOW = () => 60 * S();            // arrive: starts braking here
+    const PEEK = () => ({ x: cap.w * 0.30, y: cap.h * 0.46 });   // how far it shows from under the capsule: never more than about half
+
+    // Rest: clear of the capsule, just below it, where you'll see it whole.
+    const home = () => ({ x: cap.x, y: cap.y + cap.h / 2 + 10 * S() + half.h });
+    let p = home(), v = { x: 0, y: 0 };
+
+    // Perception: raw pointer → low-pass filtered (reaction lag) → velocity.
+    let raw = null, seen = null, seenV = { x: 0, y: 0 };
+    let inPanic = false, startle = 0;
+    const toLocal = e => ({ x: e.clientX - ringRect.left - d / 2, y: e.clientY - ringRect.top - d / 2 });
+    window.addEventListener("pointermove", e => { raw = toLocal(e); }, { passive: true });
+
+    // Reflex: if the cursor actually touches it, it bolts — an immediate
+    // velocity away from the cursor at twice top speed, plus a startle.
+    // But it is a real link: a click that genuinely lands is honoured.
+    function reflex(e) {
+      const c = toLocal(e);
+      const away = { x: p.x - c.x, y: p.y - c.y };
+      const l = Math.hypot(away.x, away.y) || 1;
+      v = { x: away.x / l * MAX_SPEED() * 2, y: away.y / l * MAX_SPEED() * 2 };
+      startle = 0.3;
+      raw = c;
+    }
+    pass.addEventListener("pointerover", reflex);
+    const lose = () => { raw = null; };
+    window.addEventListener("pointercancel", lose);
+    window.addEventListener("blur", lose);
+    document.documentElement.addEventListener("pointerleave", lose);
+
+    const len = a => Math.hypot(a.x, a.y);
+    const clip = (a, m) => { const l = len(a); return l > m ? { x: a.x / l * m, y: a.y / l * m } : a; };
+
+    // Behaviours — each returns a steering force (desired − current velocity).
+    function arrive(target, weight) {
+      const to = { x: target.x - p.x, y: target.y - p.y };
+      const dist = len(to);
+      if (dist < 0.5) return { x: -v.x * weight, y: -v.y * weight };
+      const speed = MAX_SPEED() * Math.min(1, dist / SLOW());
+      return { x: (to.x / dist * speed - v.x) * weight, y: (to.y / dist * speed - v.y) * weight };
+    }
+    // Top speed while fleeing: always faster than the cursor (1.4×), capped
+    // so it never reads as a teleport.
+    function fleeSpeed(hunterV) {
+      return Math.min(MAX_SPEED() * 3, Math.max(MAX_SPEED(), len(hunterV) * 1.4));
+    }
+    function evade(hunter, hunterV, weight) {
+      const off = { x: p.x - hunter.x, y: p.y - hunter.y };
+      const dist = len(off);
+      // Look ahead in proportion to distance: a far cursor's heading matters
+      // less than a near one's.
+      const T = Math.min(0.35, dist / (MAX_SPEED() + len(hunterV) + 1));
+      const ahead = { x: hunter.x + hunterV.x * T, y: hunter.y + hunterV.y * T };
+      const away = { x: p.x - ahead.x, y: p.y - ahead.y };
+      const l = len(away) || 1;
+      const sp = fleeSpeed(hunterV);
+      return { x: (away.x / l * sp - v.x) * weight, y: (away.y / l * sp - v.y) * weight };
+    }
+    function hidingSpot(hunter) {
+      // Far side of the capsule from the hunter, tucked mostly under it.
+      const off = { x: cap.x - hunter.x, y: cap.y - hunter.y };
+      const l = len(off) || 1;
+      const u = { x: off.x / l, y: off.y / l };
+      const k = PEEK();
+      return { x: cap.x + u.x * k.x, y: cap.y + u.y * k.y };
+    }
+    function contain(weight) {
+      const r = len(p);
+      if (r < arena * 0.85) return { x: 0, y: 0 };
+      const push = (r - arena * 0.85) / (arena * 0.15);      // 0 at the soft edge, 1 at the wall
+      const inward = { x: -p.x / r, y: -p.y / r };
+      return { x: (inward.x * MAX_SPEED() - v.x) * weight * push, y: (inward.y * MAX_SPEED() - v.y) * weight * push };
+    }
+
+    let last = performance.now(), raf = 0;
     function step(now) {
       const dt = Math.min(0.05, (now - last) / 1000); last = now;
-      if (!arena.hidden) {
-        const r = pass.getBoundingClientRect();
-        const cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-        let ax = -SPRING * x * 6, ay = -SPRING * y * 6;
-        if (cursor) {
-          const dx = cx - cursor.x, dy = cy - cursor.y;
-          const d = Math.hypot(dx, dy);
-          if (d < RADIUS && d > 0.5) {
-            const falloff = 1 - d / RADIUS;
-            const f = PUSH * (falloff + 0.35 * falloff * falloff) / Math.max(d, 26);
-            let ux = dx / d, uy = dy / d;
-            const bxNow = arena.clientWidth / 2 - r.width / 2 - 4;
-            const nearWall = Math.max(0, Math.min(1, (Math.abs(x) - (bxNow - 200)) / 200));
-            if (nearWall > 0) {
-              let tx = -uy, ty = ux;
-              if (tx * (-x) + ty * (-y) < 0) { tx = -tx; ty = -ty; }
-              const k = nearWall * 2.2;
-              ux = ux + tx * k; uy = uy + ty * k;
-              const n = Math.hypot(ux, uy) || 1; ux /= n; uy /= n;
-            }
-            ax += ux * f * 60;
-            ay += uy * f * 60 * 0.75;
-          }
+
+      // Perceive, with lag.
+      if (raw) {
+        if (!seen) { seen = { ...raw }; seenV = { x: 0, y: 0 }; }
+        else {
+          const k = 1 - Math.exp(-dt / LAG);
+          const nx = seen.x + (raw.x - seen.x) * k, ny = seen.y + (raw.y - seen.y) * k;
+          const vx = (nx - seen.x) / dt, vy = (ny - seen.y) / dt;
+          seenV = { x: seenV.x + (vx - seenV.x) * 0.5, y: seenV.y + (vy - seenV.y) * 0.5 };
+          seen = { x: nx, y: ny };
         }
-        vx = (vx + ax * dt) * DAMPING;
-        vy = (vy + ay * dt) * DAMPING;
-        const sp = Math.hypot(vx, vy);
-        if (sp > MAX_SPEED) { vx *= MAX_SPEED / sp; vy *= MAX_SPEED / sp; }
-        x += vx * dt; y += vy * dt;
-        const bx = arena.clientWidth / 2 - r.width / 2 - 4, by = 26;
-        if (x > bx) { x = bx; vx = -Math.abs(vx) * 0.4; }
-        if (x < -bx) { x = -bx; vx = Math.abs(vx) * 0.4; }
-        if (y > by) { y = by; vy = -Math.abs(vy) * 0.4; }
-        if (y < -by) { y = -by; vy = Math.abs(vy) * 0.4; }
-        pass.style.setProperty("--dx", x.toFixed(2) + "px");
-        pass.style.setProperty("--dy", y.toFixed(2) + "px");
+      } else seen = null;
+
+      let force = { x: 0, y: 0 };
+      const dist = seen ? Math.hypot(seen.x - p.x, seen.y - p.y) : Infinity;
+      const near = dist < PANIC();
+      if (near && !inPanic) startle = Math.max(startle, 0.22);   // first sight: a jolt
+      inPanic = near;
+      startle = Math.max(0, startle - dt);
+      // Startle burst, and headroom to actually outrun a fast cursor.
+      const chase = seen ? fleeSpeed(seenV) / MAX_SPEED() : 1;
+      const boost = Math.max(chase, startle > 0 ? 1 + 1.2 * (startle / 0.3) : 1);
+
+      if (seen && dist < PANIC() * 1.6) {
+        const fear = Math.max(0, Math.min(1, 1 - dist / PANIC()));  // 1 at contact, 0 at the panic radius
+        // Hide leads; evade adds the flinch. The nearer you are to the
+        // capsule's centre, the closer the hiding spot is to dead centre —
+        // fully covered — so a determined chase ends on "Stay locked in".
+        const e = evade(seen, seenV, 0.8 * fear);
+        const h = arrive(hidingSpot(seen), 1.3);
+        force = { x: e.x + h.x, y: e.y + h.y };
+      } else {
+        const h = arrive(home(), 0.6);
+        force = h;
       }
-      requestAnimationFrame(step);
+      const c = contain(2.0);
+      force = { x: force.x + c.x, y: force.y + c.y };
+      force = clip(force, MAX_FORCE() * boost);
+
+      v = clip({ x: v.x + force.x * dt, y: v.y + force.y * dt }, MAX_SPEED() * boost);
+      // A little air: nothing glides forever.
+      const damp = Math.exp(-0.9 * dt);
+      v.x *= damp; v.y *= damp;
+      p = { x: p.x + v.x * dt, y: p.y + v.y * dt };
+      const r = len(p);
+      if (r > arena) { p = { x: p.x / r * arena, y: p.y / r * arena }; }
+
+      // Resting breath, only when settled.
+      const still = len(v) < 6 && !near;
+      const bob = still ? Math.sin(now / 1500) * 1.2 : 0;
+      pass.style.setProperty("--px", p.x.toFixed(2) + "px");
+      pass.style.setProperty("--py", (p.y + bob).toFixed(2) + "px");
+      raf = requestAnimationFrame(step);
     }
-    requestAnimationFrame(step);
+
+    if (reduced) {
+      // No chase: it simply sits under the capsule's far side from the cursor.
+      pass.style.setProperty("--px", home().x + "px");
+      pass.style.setProperty("--py", home().y + "px");
+      window.addEventListener("pointermove", () => {
+        if (!raw) return;
+        const sp = Math.hypot(raw.x - p.x, raw.y - p.y) < PANIC() ? hidingSpot(raw) : home();
+        p = sp;
+        pass.style.setProperty("--px", sp.x + "px");
+        pass.style.setProperty("--py", sp.y + "px");
+      });
+      return;
+    }
+    pass.style.setProperty("--px", p.x + "px");
+    pass.style.setProperty("--py", p.y + "px");
+    raf = requestAnimationFrame(step);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") { last = performance.now(); }
+    });
   })();
 
-  // Live countdown + attended-minute tally. `until` is the phase deadline
-  // (ms epoch); `duration` is the phase length in seconds.
+  // Live countdown + the ensō. `until` is the phase deadline (ms epoch);
+  // `duration` is the phase length in seconds. The stroke advances once a
+  // minute with a slow ease — a bell, not a spinner — and a finished session
+  // still leaves the ensō open. The gap is the point.
   const timeEl = document.getElementById("time");
   const until = parseInt(params.get("until") || "0", 10);
   const duration = parseInt(params.get("duration") || "0", 10);
   const totalMinutes = Math.max(1, Math.round(duration / 60));
 
-  const rowsEl = document.getElementById("dot-rows");
-  const dots = [];
-  for (let start = 0; start < totalMinutes; start += 30) {
-    const row = document.createElement("div");
-    row.className = "row";
-    let group = null;
-    for (let m = start; m < Math.min(start + 30, totalMinutes); m++) {
-      if ((m - start) % 5 === 0) { group = document.createElement("div"); group.className = "group"; row.appendChild(group); }
-      const dot = document.createElement("div");
-      dot.className = "dot";
-      group.appendChild(dot);
-      dots.push(dot);
-    }
-    rowsEl.appendChild(row);
+  const CIRC = 2 * Math.PI * 182;
+  const ENSO_SPAN = 0.94;
+  const arcs = [document.getElementById("arc-halo"), document.getElementById("arc-ink")];
+  const tip = document.getElementById("tip");
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function setProgress(fraction) {
+    const f = Math.max(0, Math.min(1, fraction)) * ENSO_SPAN;
+    arcs.forEach(a => { a.style.strokeDashoffset = CIRC * (1 - f); });
+    tip.style.transform = `rotate(${-90 + f * 360}deg)`;
+    tip.style.opacity = fraction > 0.002 ? 1 : 0;
   }
 
+  // Draw-in: the first update eases over 2.6s; later ones take the slower
+  // per-minute ease.
+  if (!reducedMotion) {
+    arcs.forEach(a => a.classList.add("intro"));
+    tip.classList.add("intro");
+    setTimeout(() => { arcs.forEach(a => a.classList.remove("intro")); tip.classList.remove("intro"); }, 2800);
+  }
+
+  let shownMinute = -1;
   function render() {
     if (!until) {
-      timeEl.textContent = "· ·";
+      timeEl.hidden = true;
+      document.querySelector(".inner").classList.add("still");
       return;
     }
     const secs = Math.max(0, Math.ceil((until - Date.now()) / 1000));
     const m = String(Math.floor(secs / 60)).padStart(2, "0");
     const s = String(secs % 60).padStart(2, "0");
     timeEl.textContent = `${m}:${s}`;
-    document.getElementById("island-minutes").textContent = Math.ceil(secs / 60);
 
     if (duration > 0) {
-      const attended = Math.min(totalMinutes, Math.floor(((duration - secs) / duration) * totalMinutes));
-      dots.forEach((dot, i) => {
-        dot.classList.toggle("attended", i < attended);
-        dot.classList.toggle("now", i === attended);
-      });
-      document.getElementById("attended-line").textContent =
-        `${attended} OF ${totalMinutes} MINUTES ATTENDED`;
+      const elapsed = Math.max(0, duration - secs);
+      const minute = Math.floor((elapsed / duration) * totalMinutes);
+      if (strokeReady && minute !== shownMinute) {
+        shownMinute = minute;
+        setProgress(Math.min(1, minute / totalMinutes));
+      }
     }
-    if (secs > 0) setTimeout(render, 1000 - (Date.now() % 1000));
+    if (secs > 0 && !scheduled) {
+      scheduled = true;
+      setTimeout(() => { scheduled = false; render(); }, 1000 - (Date.now() % 1000));
+    }
   }
+  let scheduled = false;
+  // The clock starts synchronously (rAF is paused in background tabs, and
+  // the countdown must run there too). The stroke's first update waits one
+  // tick so the empty state from the markup is what it transitions from.
+  let strokeReady = false;
   render();
+  setTimeout(() => { strokeReady = true; shownMinute = -1; render(); }, 80);
 </script>
 </body>
 </html>
