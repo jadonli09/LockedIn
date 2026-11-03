@@ -89,6 +89,22 @@ final class FaceRecognitionPipeline: @unchecked Sendable {
         return try recognize(face, in: frame)
     }
 
+    /// Embeds every prominent face (up to `limit`), the one continuing from
+    /// `previousBoundingBox` first, then largest first. Lets a scan find the
+    /// enrolled user even while someone else is also in front of the camera.
+    func recognizeCandidates(in frame: CGImage, preferNear previousBoundingBox: CGRect? = nil, limit: Int = 3) throws -> [FaceRecognitionResult] {
+        let faces = try FaceDetector.detectFaces(in: frame)
+        var candidates = faces
+            .filter { $0.normalizedBoundingBox.width >= CGFloat(Self.minimumProminentFaceWidth) }
+            .sorted { $0.boundingBox.width * $0.boundingBox.height > $1.boundingBox.width * $1.boundingBox.height }
+        guard !candidates.isEmpty else { throw FaceRecognitionPipelineError.noFaceDetected }
+        if let tracked = Self.selectDominantFace(in: candidates, preferNear: previousBoundingBox),
+           let index = candidates.firstIndex(where: { $0.normalizedBoundingBox == tracked.normalizedBoundingBox }) {
+            candidates.insert(candidates.remove(at: index), at: 0)
+        }
+        return candidates.prefix(limit).compactMap { try? recognize($0, in: frame) }
+    }
+
     /// Aligns and embeds an already-chosen face (enrollment bypasses the prominence
     /// filter so a too-small face reads as "move closer" rather than "nobody there").
     func recognize(_ face: DetectedFace, in frame: CGImage) throws -> FaceRecognitionResult {

@@ -80,24 +80,45 @@ enum FaceScanner {
             lastFrameID = frame.id
 
             let previousBox = lastFaceBox
-            let wantsLiveness = livenessLevel != .off
-            let outcome = await Task.detached(priority: .userInitiated) { () -> (FaceRecognitionResult, LivenessFrame?)? in
-                guard let result = try? pipeline.recognize(in: frame.image, preferNear: previousBox) else { return nil }
-                guard wantsLiveness else { return (result, nil) }
-                let crop = CameraManager.renderCrop(from: frame, imageRect: result.face.boundingBox)
-                return (result, LivenessFeatureExtractor.extract(from: result, frame: frame.image, faceCrop: crop))
+            let candidates = await Task.detached(priority: .userInitiated) {
+                (try? pipeline.recognizeCandidates(in: frame.image, preferNear: previousBox)) ?? []
             }.value
 
-            guard let (result, livenessFrame) = outcome else {
+            guard !candidates.isEmpty else {
                 consecutiveWrongFace = 0
                 lastFaceBox = nil
                 try? await Task.sleep(for: .milliseconds(20))
                 continue
             }
-            lastFaceBox = result.face.normalizedBoundingBox
             if !sawFace { sawFace = true; mark("first face") }
 
-            if let livenessFrame {
+            // Follow whichever face is the enrolled user — someone else being in
+            // frame (or in front) must not hide them. Otherwise the tracked face.
+            var chosen = candidates[0]
+            var match: ScoredIdentity?
+            for candidate in candidates {
+                let scored = pipeline.score(candidate.embedding, against: identities)
+                if let hit = pipeline.bestMatch(in: scored, threshold: threshold) {
+                    chosen = candidate
+                    match = hit
+                    break
+                }
+            }
+
+            // A different person: their liveness history isn't this one's.
+            if let previousBox, !Self.isSameFace(previousBox, chosen.face.normalizedBoundingBox) {
+                liveness.reset()
+                livenessConfirmed = livenessLevel == .off
+                consecutiveWrongFace = 0
+            }
+            lastFaceBox = chosen.face.normalizedBoundingBox
+
+            if livenessLevel != .off {
+                let result = chosen
+                let livenessFrame = await Task.detached(priority: .userInitiated) {
+                    let crop = CameraManager.renderCrop(from: frame, imageRect: result.face.boundingBox)
+                    return LivenessFeatureExtractor.extract(from: result, frame: frame.image, faceCrop: crop)
+                }.value
                 let snapshot = liveness.observe(livenessFrame)
                 switch snapshot.decision {
                 case .denied:
@@ -110,8 +131,7 @@ enum FaceScanner {
                 }
             }
 
-            let scored = pipeline.score(result.embedding, against: identities)
-            if let match = pipeline.bestMatch(in: scored, threshold: threshold) {
+            if let match {
                 consecutiveWrongFace = 0
                 readyMatch = match
             } else {
@@ -129,6 +149,11 @@ enum FaceScanner {
             try? await Task.sleep(for: .milliseconds(20))
         }
         return Task.isCancelled || !shouldContinue() ? .cancelled : .noFace
+    }
+
+    /// Same tolerance the pipeline uses for frame-to-frame continuity.
+    private static func isSameFace(_ a: CGRect, _ b: CGRect) -> Bool {
+        hypot(a.midX - b.midX, a.midY - b.midY) < 0.3
     }
 
     /// The threshold from Settings.

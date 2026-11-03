@@ -150,7 +150,7 @@ final class FaceUnlockCoordinator: ObservableObject {
 
         hasArmedForCurrentLock = true
         lastArmedAt = .now
-        startScan(allowRetry: true)
+        startScan()
     }
 
     private var isWithinRecentArmBurst: Bool {
@@ -160,12 +160,12 @@ final class FaceUnlockCoordinator: ObservableObject {
 
     /// Manual retry (Settings "Test now" while locked is impossible, so this is
     /// only reachable through a fresh trigger); kept for symmetry with the gate.
-    func startScan(allowRetry: Bool) {
+    func startScan() {
         scanTask?.cancel()
         scanGeneration &+= 1
         let generation = scanGeneration
         scanTask = Task { [weak self] in
-            await self?.runScan(generation: generation, allowRetry: allowRetry)
+            await self?.runScan(generation: generation)
         }
     }
 
@@ -178,59 +178,79 @@ final class FaceUnlockCoordinator: ObservableObject {
         }
     }
 
-    private func runScan(generation: Int, allowRetry: Bool) async {
+    /// How long one lock keeps looking before giving up until the next wake.
+    /// Long enough for the owner to walk over after someone else tried.
+    private static let watchWindow: Duration = .seconds(60)
+    /// Pause after a miss before looking again (the head-shake plays meanwhile).
+    private static let retryPause: Duration = .seconds(1)
+
+    /// Keeps scanning while the screen stays locked: a stranger (or a photo)
+    /// failing doesn't end it — after a short pause it looks again, so the owner
+    /// stepping in gets recognized. Stops on a match, on unlock, or when the
+    /// watch window runs out. The camera stays leased across attempts so each
+    /// retry doesn't pay camera startup.
+    private func runScan(generation: Int) async {
         guard LockMonitor.isScreenActuallyLocked() else { return }
-        phase = .scanning
-        statusMessage = "Looking for your face…"
+        let camera = CameraManager.shared
+        let lease = await camera.acquire(client: "Face unlock", maxFPS: 30)
+        defer { camera.release(lease) }
 
-        let outcome = await FaceScanner.scan(
-            client: "Face unlock",
-            seconds: TimeInterval(Defaults[.faceScanSeconds]),
-            livenessLevel: Defaults[.faceLivenessLevel],
-            threshold: FaceScanner.configuredThreshold,
-            shouldContinue: { LockMonitor.isScreenActuallyLocked() }
-        )
-        guard generation == scanGeneration else { return }
+        let deadline = ContinuousClock.now + Self.watchWindow
+        var attempt = 0
+        while generation == scanGeneration, ContinuousClock.now < deadline, LockMonitor.isScreenActuallyLocked() {
+            attempt += 1
+            phase = .scanning
+            statusMessage = attempt == 1 ? "Looking for your face…" : "Looking for your face… (attempt \(attempt))"
 
-        switch outcome {
-        case .matched(let name, let similarity):
-            statusMessage = "Recognized \(name) (\(String(format: "%.2f", similarity))) — unlocking…"
-            let (ok, message) = await typeStoredPassword()
+            let outcome = await FaceScanner.scan(
+                client: "Face unlock",
+                seconds: TimeInterval(Defaults[.faceScanSeconds]),
+                livenessLevel: Defaults[.faceLivenessLevel],
+                threshold: FaceScanner.configuredThreshold,
+                shouldContinue: { LockMonitor.isScreenActuallyLocked() }
+            )
             guard generation == scanGeneration else { return }
-            if ok {
-                phase = .success
-                statusMessage = "Unlocked \(name)."
-                await hold(.milliseconds(1500), generation: generation)
-            } else {
-                phase = .failure(message ?? "Couldn't type the password.")
-                statusMessage = message ?? "Couldn't type the password."
-                await hold(.seconds(3), generation: generation)
-            }
-        case .wrongFace:
-            phase = .failure("Not recognized")
-            statusMessage = "Face not recognized."
-            await hold(.seconds(3), generation: generation)
-        case .spoofSuspected(let reason):
-            phase = .failure("Not a live face")
-            statusMessage = reason
-            await hold(.seconds(3), generation: generation)
-        case .noFace:
-            statusMessage = "No face detected."
-            if allowRetry, LockMonitor.isScreenActuallyLocked() {
-                // One quiet retry: a lid-open often catches the user still settling in.
-                try? await Task.sleep(for: .milliseconds(800))
+
+            switch outcome {
+            case .matched(let name, let similarity):
+                statusMessage = "Recognized \(name) (\(String(format: "%.2f", similarity))) — unlocking…"
+                let (ok, message) = await typeStoredPassword()
                 guard generation == scanGeneration else { return }
-                await runScan(generation: generation, allowRetry: false)
+                if ok {
+                    phase = .success
+                    statusMessage = "Unlocked \(name)."
+                    await hold(.milliseconds(1500), generation: generation)
+                } else {
+                    phase = .failure(message ?? "Couldn't type the password.")
+                    statusMessage = message ?? "Couldn't type the password."
+                    await hold(.seconds(3), generation: generation)
+                }
+                return
+            case .wrongFace:
+                phase = .failure("Not recognized")
+                statusMessage = "Face not recognized — looking again."
+            case .spoofSuspected(let reason):
+                phase = .failure("Not a live face")
+                statusMessage = reason
+            case .noFace:
+                // Nobody there: keep the scan glyph up and look again quietly.
+                statusMessage = "No face detected — still looking."
+            case .cancelled:
+                phase = .idle
+                return
+            case .unavailable(let reason):
+                statusMessage = reason
+                phase = .failure("Camera unavailable")
+                await hold(.seconds(2), generation: generation)
                 return
             }
-            phase = .idle
-        case .cancelled:
-            phase = .idle
-        case .unavailable(let reason):
-            statusMessage = reason
-            phase = .failure("Camera unavailable")
-            await hold(.seconds(2), generation: generation)
+            try? await Task.sleep(for: Self.retryPause)
         }
+        guard generation == scanGeneration else { return }
+        if LockMonitor.isScreenActuallyLocked() {
+            statusMessage = "Stopped looking — wake the Mac to try again."
+        }
+        phase = .idle
     }
 
     /// Reads the password only now, after a match, hands it to the helper to
